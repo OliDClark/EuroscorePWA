@@ -2,12 +2,13 @@
 const PARSE_CONFIG = {
     appId: 'xa3bEo60pNY2AlbGX5BIGmKTMsbnRBjRTOlQlGsS',
     javascriptKey: 'bUZAnINWUmiTW0wljHgH3iiDRSUTljQObGjPTRlV',
-    serverURL: 'https://pg-app-ed22jlv253ocu5itq213e4rcezp1r1.scalabl.cloud/1/parse' // e.g., 'https://parseapi.back4app.com'
+    serverURL: 'https://pg-app-ed22jlv253ocu5itq213e4rcezp1r1.scalabl.cloud/parse' // e.g., 'https://parseapi.back4app.com'
 };
 
 // Initialize Parse
 Parse.initialize(PARSE_CONFIG.appId, PARSE_CONFIG.javascriptKey);
 Parse.serverURL = PARSE_CONFIG.serverURL;
+console.log('Parse Config:', PARSE_CONFIG);
 
 // State management
 const state = {

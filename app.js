@@ -202,6 +202,7 @@ async function handleSignup() {
         user.set('username', username);
         user.set('email', email);
         user.set('password', password);
+        user.set('Name', username); // Also set Name field for display
         
         await user.signUp();
         state.currentUser = user;
@@ -231,14 +232,24 @@ async function loadUserParties() {
     elements.partiesList.innerHTML = '<p class="loading">Loading parties...</p>';
     
     try {
-        const PartyMember = Parse.Object.extend('PartyMember');
-        const query = new Parse.Query(PartyMember);
-        query.equalTo('user', state.currentUser);
-        query.include('party');
-        query.descending('createdAt');
+        const Parties = Parse.Object.extend('Parties');
         
-        const memberships = await query.find();
-        state.userParties = memberships.map(m => m.get('party')).filter(p => p);
+        // Find parties where user is host
+        const hostQuery = new Parse.Query(Parties);
+        hostQuery.equalTo('Host', state.currentUser);
+        
+        // Find parties where user is a guest
+        const guestQuery = new Parse.Query(Parties);
+        const guestsRelation = guestQuery.relation('Guests');
+        guestsRelation.query().equalTo('objectId', state.currentUser.id);
+        
+        // Combine queries
+        const mainQuery = Parse.Query.or(hostQuery, guestQuery);
+        mainQuery.descending('createdAt');
+        mainQuery.include('Host');
+        mainQuery.include('whichComp');
+        
+        state.userParties = await mainQuery.find();
         
         displayParties();
     } catch (error) {
@@ -260,16 +271,18 @@ function displayParties() {
         card.className = 'party-card';
         card.onclick = () => showPartyScreen(party);
         
-        const name = party.get('name');
-        const description = party.get('description') || 'No description';
-        const code = party.get('code');
+        const name = party.get('Name');
+        const location = party.get('Location') || 'No location';
+        const password = party.get('Password');
         const created = party.createdAt.toLocaleDateString();
+        const comp = party.get('whichComp');
+        const compInfo = comp ? `${comp.get('stage')} ${comp.get('year')}` : 'General';
         
         card.innerHTML = `
             <h4>${escapeHtml(name)}</h4>
-            <p>${escapeHtml(description)}</p>
+            <p>${escapeHtml(location)} • ${escapeHtml(compInfo)}</p>
             <div class="party-meta">
-                <span>Code: ${escapeHtml(code)}</span>
+                <span>Code: ${escapeHtml(password)}</span>
                 <span>Created: ${created}</span>
             </div>
         `;
@@ -280,7 +293,7 @@ function displayParties() {
 
 async function handleCreateParty() {
     const name = elements.partyNameInput.value.trim();
-    const description = elements.partyDescriptionInput.value.trim();
+    const location = elements.partyDescriptionInput.value.trim();
     
     elements.createError.textContent = '';
     
@@ -293,21 +306,24 @@ async function handleCreateParty() {
     elements.createPartyBtn.textContent = 'Creating...';
     
     try {
-        const Party = Parse.Object.extend('Party');
-        const party = new Party();
+        const Parties = Parse.Object.extend('Parties');
+        const party = new Parties();
         
-        // Generate unique party code with verification
-        const code = await generateUniquePartyCode();
+        // Generate unique party password with verification
+        const password = await generateUniquePartyCode();
         
-        party.set('name', name);
-        party.set('description', description);
-        party.set('code', code);
-        party.set('creator', state.currentUser);
+        party.set('Name', name);
+        party.set('Location', location || 'Online');
+        party.set('Password', password);
+        party.set('Host', state.currentUser);
+        party.set('GuestVoting', true);
         
         await party.save();
         
-        // Add creator as member
-        await joinPartyById(party);
+        // Add creator as guest
+        const guestsRelation = party.relation('Guests');
+        guestsRelation.add(state.currentUser);
+        await party.save();
         
         // Refresh parties list
         await loadUserParties();
@@ -332,11 +348,11 @@ async function handleCreateParty() {
 }
 
 async function handleJoinParty() {
-    const code = elements.partyCodeInput.value.trim().toUpperCase();
+    const password = elements.partyCodeInput.value.trim().toUpperCase();
     
     elements.joinError.textContent = '';
     
-    if (!code) {
+    if (!password) {
         elements.joinError.textContent = 'Please enter a party code';
         return;
     }
@@ -345,10 +361,10 @@ async function handleJoinParty() {
     elements.joinPartyBtn.textContent = 'Joining...';
     
     try {
-        // Find party by code
-        const Party = Parse.Object.extend('Party');
-        const query = new Parse.Query(Party);
-        query.equalTo('code', code);
+        // Find party by password
+        const Parties = Parse.Object.extend('Parties');
+        const query = new Parse.Query(Parties);
+        query.equalTo('Password', password);
         
         const party = await query.first();
         
@@ -357,13 +373,11 @@ async function handleJoinParty() {
             return;
         }
         
-        // Check if already a member
-        const PartyMember = Parse.Object.extend('PartyMember');
-        const memberQuery = new Parse.Query(PartyMember);
-        memberQuery.equalTo('user', state.currentUser);
-        memberQuery.equalTo('party', party);
-        
-        const existing = await memberQuery.first();
+        // Check if already a guest
+        const guestsRelation = party.relation('Guests');
+        const guestsQuery = guestsRelation.query();
+        guestsQuery.equalTo('objectId', state.currentUser.id);
+        const existing = await guestsQuery.first();
         
         if (existing) {
             // Already a member, just show the party
@@ -372,8 +386,9 @@ async function handleJoinParty() {
             return;
         }
         
-        // Add as member
-        await joinPartyById(party);
+        // Add as guest
+        guestsRelation.add(state.currentUser);
+        await party.save();
         
         // Refresh parties list
         await loadUserParties();
@@ -393,21 +408,13 @@ async function handleJoinParty() {
     }
 }
 
-async function joinPartyById(party) {
-    const PartyMember = Parse.Object.extend('PartyMember');
-    const member = new PartyMember();
-    member.set('user', state.currentUser);
-    member.set('party', party);
-    await member.save();
-}
-
 // Party detail screen
 async function updatePartyScreen() {
     const party = state.currentParty;
     
-    elements.partyTitle.textContent = party.get('name');
-    elements.partyDescription.textContent = party.get('description') || 'No description';
-    elements.partyCodeDisplay.textContent = party.get('code');
+    elements.partyTitle.textContent = party.get('Name');
+    elements.partyDescription.textContent = party.get('Location') || 'No location';
+    elements.partyCodeDisplay.textContent = party.get('Password');
     
     // Load current user's vote
     await loadUserVote();
@@ -418,10 +425,11 @@ async function updatePartyScreen() {
 
 async function loadUserVote() {
     try {
-        const Vote = Parse.Object.extend('Vote');
-        const query = new Parse.Query(Vote);
-        query.equalTo('user', state.currentUser);
-        query.equalTo('party', state.currentParty);
+        const Thumbs = Parse.Object.extend('Thumbs');
+        const query = new Parse.Query(Thumbs);
+        query.equalTo('whoseVote', state.currentUser);
+        query.equalTo('whichParty', state.currentParty);
+        query.doesNotExist('songDeets'); // Get votes not tied to specific songs
         
         const vote = await query.first();
         
@@ -432,7 +440,15 @@ async function loadUserVote() {
         
         if (vote) {
             state.currentUserVote = vote;
-            const voteValue = vote.get('vote');
+            // Determine which button to highlight based on counts
+            const up = vote.get('thumbsUp') || 0;
+            const mid = vote.get('thumbsMid') || 0;
+            const down = vote.get('thumbsDown') || 0;
+            
+            let voteValue = 'middle';
+            if (up > 0) voteValue = 'up';
+            else if (down > 0) voteValue = 'down';
+            
             const btn = document.querySelector(`.vote-btn[data-vote="${voteValue}"]`);
             if (btn) {
                 btn.classList.add('selected');
@@ -449,19 +465,35 @@ async function loadUserVote() {
 
 async function handleVote(voteValue) {
     try {
-        const Vote = Parse.Object.extend('Vote');
+        const Thumbs = Parse.Object.extend('Thumbs');
         let vote;
         
         if (state.currentUserVote) {
             // Update existing vote
             vote = state.currentUserVote;
-            vote.set('vote', voteValue);
         } else {
             // Create new vote
-            vote = new Vote();
-            vote.set('user', state.currentUser);
-            vote.set('party', state.currentParty);
-            vote.set('vote', voteValue);
+            vote = new Thumbs();
+            vote.set('whoseVote', state.currentUser);
+            vote.set('whichParty', state.currentParty);
+            const comp = state.currentParty.get('whichComp');
+            if (comp) {
+                vote.set('whichComp', comp);
+            }
+        }
+        
+        // Reset all counts
+        vote.set('thumbsUp', 0);
+        vote.set('thumbsMid', 0);
+        vote.set('thumbsDown', 0);
+        
+        // Set the selected vote
+        if (voteValue === 'up') {
+            vote.set('thumbsUp', 1);
+        } else if (voteValue === 'middle') {
+            vote.set('thumbsMid', 1);
+        } else if (voteValue === 'down') {
+            vote.set('thumbsDown', 1);
         }
         
         await vote.save();
@@ -491,10 +523,11 @@ async function loadScoreboard() {
     elements.scoreboardContent.innerHTML = '<p class="loading">Loading scores...</p>';
     
     try {
-        const Vote = Parse.Object.extend('Vote');
-        const query = new Parse.Query(Vote);
-        query.equalTo('party', state.currentParty);
-        query.include('user');
+        const Thumbs = Parse.Object.extend('Thumbs');
+        const query = new Parse.Query(Thumbs);
+        query.equalTo('whichParty', state.currentParty);
+        query.doesNotExist('songDeets'); // Get votes not tied to specific songs
+        query.include('whoseVote');
         
         const votes = await query.find();
         
@@ -502,11 +535,13 @@ async function loadScoreboard() {
         const scoreMap = {};
         
         votes.forEach(vote => {
-            const user = vote.get('user');
+            const user = vote.get('whoseVote');
             if (!user) return;
             
-            const username = user.getUsername();
-            const voteValue = vote.get('vote');
+            const username = user.get('Name') || user.getUsername();
+            const up = vote.get('thumbsUp') || 0;
+            const mid = vote.get('thumbsMid') || 0;
+            const down = vote.get('thumbsDown') || 0;
             
             if (!scoreMap[username]) {
                 scoreMap[username] = {
@@ -518,11 +553,12 @@ async function loadScoreboard() {
                 };
             }
             
-            scoreMap[username][voteValue]++;
+            scoreMap[username].up += up;
+            scoreMap[username].middle += mid;
+            scoreMap[username].down += down;
             
             // Calculate total: up = +1, middle = 0, down = -1
-            if (voteValue === 'up') scoreMap[username].total += 1;
-            else if (voteValue === 'down') scoreMap[username].total -= 1;
+            scoreMap[username].total += up - down;
         });
         
         // Convert to array and sort
@@ -582,7 +618,7 @@ function generatePartyCode() {
 }
 
 async function generateUniquePartyCode() {
-    const Party = Parse.Object.extend('Party');
+    const Parties = Parse.Object.extend('Parties');
     let code;
     let isUnique = false;
     let attempts = 0;
@@ -591,9 +627,9 @@ async function generateUniquePartyCode() {
     while (!isUnique && attempts < maxAttempts) {
         code = generatePartyCode();
         
-        // Check if code already exists
-        const query = new Parse.Query(Party);
-        query.equalTo('code', code);
+        // Check if password already exists
+        const query = new Parse.Query(Parties);
+        query.equalTo('Password', code);
         const existing = await query.first();
         
         if (!existing) {

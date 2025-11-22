@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4285f4">
+    <title>Euroscore - Party Voting</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="icon-192.png">
+</head>
+<body>
+    <div id="app">
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen">
+            <div class="container">
+                <h1>🎉 Euroscore</h1>
+                <p class="tagline">Vote and celebrate with friends!</p>
+                <div class="auth-form">
+                    <input type="text" id="login-username" placeholder="Username" autocomplete="username">
+                    <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
+                    <button id="login-btn" class="btn btn-primary">Login</button>
+                    <button id="show-signup-btn" class="btn btn-secondary">Create Account</button>
+                    <div id="login-error" class="error-message"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Signup Screen -->
+        <div id="signup-screen" class="screen hidden">
+            <div class="container">
+                <h1>Create Account</h1>
+                <div class="auth-form">
+                    <input type="text" id="signup-username" placeholder="Username" autocomplete="username">
+                    <input type="email" id="signup-email" placeholder="Email" autocomplete="email">
+                    <input type="password" id="signup-password" placeholder="Password" autocomplete="new-password">
+                    <button id="signup-btn" class="btn btn-primary">Sign Up</button>
+                    <button id="show-login-btn" class="btn btn-secondary">Back to Login</button>
+                    <div id="signup-error" class="error-message"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Screen -->
+        <div id="main-screen" class="screen hidden">
+            <nav class="navbar">
+                <h2>🎉 Euroscore</h2>
+                <div class="nav-actions">
+                    <span id="username-display"></span>
+                    <button id="logout-btn" class="btn btn-small">Logout</button>
+                </div>
+            </nav>
+
+            <div class="container">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="parties">My Parties</button>
+                    <button class="tab-btn" data-tab="join">Join Party</button>
+                    <button class="tab-btn" data-tab="create">Create Party</button>
+                </div>
+
+                <!-- My Parties Tab -->
+                <div id="parties-tab" class="tab-content active">
+                    <h3>My Parties</h3>
+                    <div id="parties-list" class="parties-list">
+                        <p class="loading">Loading parties...</p>
+                    </div>
+                </div>
+
+                <!-- Join Party Tab -->
+                <div id="join-tab" class="tab-content hidden">
+                    <h3>Join a Party</h3>
+                    <div class="form-group">
+                        <input type="text" id="party-code-input" placeholder="Enter Party Code">
+                        <button id="join-party-btn" class="btn btn-primary">Join Party</button>
+                        <div id="join-error" class="error-message"></div>
+                    </div>
+                </div>
+
+                <!-- Create Party Tab -->
+                <div id="create-tab" class="tab-content hidden">
+                    <h3>Create a New Party</h3>
+                    <div class="form-group">
+                        <input type="text" id="party-name-input" placeholder="Party Name">
+                        <textarea id="party-description-input" placeholder="Description (optional)" rows="3"></textarea>
+                        <button id="create-party-btn" class="btn btn-primary">Create Party</button>
+                        <div id="create-error" class="error-message"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Party Detail Screen -->
+        <div id="party-screen" class="screen hidden">
+            <nav class="navbar">
+                <button id="back-to-main-btn" class="btn btn-small">← Back</button>
+                <h2 id="party-title"></h2>
+            </nav>
+
+            <div class="container">
+                <div class="party-info">
+                    <p id="party-description"></p>
+                    <p class="party-code">Party Code: <strong id="party-code-display"></strong></p>
+                </div>
+
+                <div class="voting-section">
+                    <h3>Cast Your Vote</h3>
+                    <div class="vote-buttons">
+                        <button class="vote-btn" data-vote="up" title="Thumbs Up">
+                            👍
+                            <span>Up</span>
+                        </button>
+                        <button class="vote-btn" data-vote="middle" title="Thumbs Middle">
+                            👊
+                            <span>Middle</span>
+                        </button>
+                        <button class="vote-btn" data-vote="down" title="Thumbs Down">
+                            👎
+                            <span>Down</span>
+                        </button>
+                    </div>
+                    <p id="vote-status" class="vote-status"></p>
+                </div>
+
+                <div class="scoreboard">
+                    <h3>🏆 Scoreboard</h3>
+                    <div id="scoreboard-content" class="scoreboard-content">
+                        <p class="loading">Loading scores...</p>
+                    </div>
+                    <button id="refresh-scores-btn" class="btn btn-secondary">Refresh Scores</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Parse SDK -->
+    <script src="https://npmcdn.com/parse@3.4.4/dist/parse.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

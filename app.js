@@ -1,8 +1,8 @@
 // Parse configuration - Users need to update these with their Parse server details
 const PARSE_CONFIG = {
-    appId: 'YOUR_APP_ID',
-    javascriptKey: 'YOUR_JAVASCRIPT_KEY',
-    serverURL: 'YOUR_SERVER_URL' // e.g., 'https://parseapi.back4app.com'
+    appId: 'xa3bEo60pNY2AlbGX5BIGmKTMsbnRBjRTOlQlGsS',
+    javascriptKey: 'bUZAnINWUmiTW0wljHgH3iiDRSUTljQObGjPTRlV',
+    serverURL: 'https://pg-app-ed22jlv253ocu5itq213e4rcezp1r1.scalabl.cloud/' // e.g., 'https://parseapi.back4app.com'
 };
 
 // Initialize Parse

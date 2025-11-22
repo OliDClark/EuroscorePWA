@@ -237,19 +237,44 @@ async function loadUserParties() {
         // Find parties where user is host
         const hostQuery = new Parse.Query(Parties);
         hostQuery.equalTo('Host', state.currentUser);
+        hostQuery.include('Host');
+        hostQuery.include('whichComp');
         
-        // Find parties where user is a guest
-        const guestQuery = new Parse.Query(Parties);
-        const guestsRelation = guestQuery.relation('Guests');
-        guestsRelation.query().equalTo('objectId', state.currentUser.id);
+        const hostedParties = await hostQuery.find();
         
-        // Combine queries
-        const mainQuery = Parse.Query.or(hostQuery, guestQuery);
-        mainQuery.descending('createdAt');
-        mainQuery.include('Host');
-        mainQuery.include('whichComp');
+        // Find all parties and check Guests relation
+        const allPartiesQuery = new Parse.Query(Parties);
+        allPartiesQuery.include('Host');
+        allPartiesQuery.include('whichComp');
+        allPartiesQuery.descending('createdAt');
         
-        state.userParties = await mainQuery.find();
+        const allParties = await allPartiesQuery.find();
+        
+        // Filter parties where user is a guest
+        const guestParties = [];
+        for (const party of allParties) {
+            const guestsRelation = party.relation('Guests');
+            const guestsQuery = guestsRelation.query();
+            guestsQuery.equalTo('objectId', state.currentUser.id);
+            const isGuest = await guestsQuery.first();
+            if (isGuest) {
+                guestParties.push(party);
+            }
+        }
+        
+        // Combine and deduplicate
+        const partyIds = new Set();
+        state.userParties = [];
+        
+        [...hostedParties, ...guestParties].forEach(party => {
+            if (!partyIds.has(party.id)) {
+                partyIds.add(party.id);
+                state.userParties.push(party);
+            }
+        });
+        
+        // Sort by creation date
+        state.userParties.sort((a, b) => b.createdAt - a.createdAt);
         
         displayParties();
     } catch (error) {

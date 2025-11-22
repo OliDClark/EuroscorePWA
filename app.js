@@ -296,8 +296,8 @@ async function handleCreateParty() {
         const Party = Parse.Object.extend('Party');
         const party = new Party();
         
-        // Generate unique party code
-        const code = generatePartyCode();
+        // Generate unique party code with verification
+        const code = await generateUniquePartyCode();
         
         party.set('name', name);
         party.set('description', description);
@@ -578,6 +578,35 @@ function generatePartyCode() {
     for (let i = 0; i < 6; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
+    return code;
+}
+
+async function generateUniquePartyCode() {
+    const Party = Parse.Object.extend('Party');
+    let code;
+    let isUnique = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (!isUnique && attempts < maxAttempts) {
+        code = generatePartyCode();
+        
+        // Check if code already exists
+        const query = new Parse.Query(Party);
+        query.equalTo('code', code);
+        const existing = await query.first();
+        
+        if (!existing) {
+            isUnique = true;
+        }
+        attempts++;
+    }
+    
+    if (!isUnique) {
+        // Fallback to timestamp-based code if random generation fails
+        code = Date.now().toString(36).toUpperCase().slice(-6);
+    }
+    
     return code;
 }
 

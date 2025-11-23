@@ -294,29 +294,46 @@ function displayParties() {
         }
     });
     
-    elements.partiesList.innerHTML = '';
+    // Create tabbed interface
+    elements.partiesList.innerHTML = `
+        <div class="parties-tabs">
+            <button class="tab-button active" data-tab="hosted">🎉 Hosted by You (${hostedParties.length})</button>
+            <button class="tab-button" data-tab="joined">🎊 Joined Parties (${joinedParties.length})</button>
+        </div>
+        <div class="tab-content active" id="hosted-tab">
+            ${hostedParties.length === 0 ? '<p class="loading">No hosted parties yet</p>' : ''}
+        </div>
+        <div class="tab-content" id="joined-tab">
+            ${joinedParties.length === 0 ? '<p class="loading">No joined parties yet</p>' : ''}
+        </div>
+    `;
     
-    // Display hosted parties
-    if (hostedParties.length > 0) {
-        const hostedSection = document.createElement('div');
-        hostedSection.innerHTML = '<h3 style="margin: 20px 0 10px 0; color: #666;">🎉 Hosted by You</h3>';
-        elements.partiesList.appendChild(hostedSection);
-        
-        hostedParties.forEach(party => {
-            elements.partiesList.appendChild(createPartyCard(party));
-        });
-    }
+    // Add hosted parties to the hosted tab
+    const hostedTab = document.getElementById('hosted-tab');
+    hostedParties.forEach(party => {
+        hostedTab.appendChild(createPartyCard(party));
+    });
     
-    // Display joined parties
-    if (joinedParties.length > 0) {
-        const joinedSection = document.createElement('div');
-        joinedSection.innerHTML = '<h3 style="margin: 20px 0 10px 0; color: #666;">🎊 Joined Parties</h3>';
-        elements.partiesList.appendChild(joinedSection);
-        
-        joinedParties.forEach(party => {
-            elements.partiesList.appendChild(createPartyCard(party));
+    // Add joined parties to the joined tab
+    const joinedTab = document.getElementById('joined-tab');
+    joinedParties.forEach(party => {
+        joinedTab.appendChild(createPartyCard(party));
+    });
+    
+    // Add tab click handlers
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', () => {
+            const tabName = button.dataset.tab;
+            
+            // Update button states
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            button.classList.add('active');
+            
+            // Update tab content visibility
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`${tabName}-tab`).classList.add('active');
         });
-    }
+    });
 }
 
 function createPartyCard(party) {

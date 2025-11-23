@@ -240,28 +240,18 @@ async function loadUserParties() {
         hostQuery.equalTo('Host', state.currentUser);
         hostQuery.include('Host');
         hostQuery.include('whichComp');
+        hostQuery.descending('createdAt');
         
         const hostedParties = await hostQuery.find();
         
-        // Find all parties and check Guests relation
-        const allPartiesQuery = new Parse.Query(Parties);
-        allPartiesQuery.include('Host');
-        allPartiesQuery.include('whichComp');
-        allPartiesQuery.descending('createdAt');
+        // Find parties where user is a guest using relatedTo
+        const guestQuery = new Parse.Query(Parties);
+        guestQuery.equalTo('Guests', state.currentUser);
+        guestQuery.include('Host');
+        guestQuery.include('whichComp');
+        guestQuery.descending('createdAt');
         
-        const allParties = await allPartiesQuery.find();
-        
-        // Filter parties where user is a guest
-        const guestParties = [];
-        for (const party of allParties) {
-            const guestsRelation = party.relation('Guests');
-            const guestsQuery = guestsRelation.query();
-            guestsQuery.equalTo('objectId', state.currentUser.id);
-            const isGuest = await guestsQuery.first();
-            if (isGuest) {
-                guestParties.push(party);
-            }
-        }
+        const guestParties = await guestQuery.find();
         
         // Combine and deduplicate
         const partyIds = new Set();

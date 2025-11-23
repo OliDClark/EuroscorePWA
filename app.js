@@ -290,31 +290,67 @@ function displayParties() {
         return;
     }
     
-    elements.partiesList.innerHTML = '';
+    // Separate parties into hosted and joined
+    const currentUser = Parse.User.current();
+    const hostedParties = [];
+    const joinedParties = [];
     
     state.userParties.forEach(party => {
-        const card = document.createElement('div');
-        card.className = 'party-card';
-        card.onclick = () => showPartyScreen(party);
-        
-        const name = party.get('Name');
-        const location = party.get('Location') || 'No location';
-        const password = party.get('Password');
-        const created = party.createdAt.toLocaleDateString();
-        const comp = party.get('whichComp');
-        const compInfo = comp ? `${comp.get('stage')} ${comp.get('year')}` : 'General';
-        
-        card.innerHTML = `
-            <h4>${escapeHtml(name)}</h4>
-            <p>${escapeHtml(location)} • ${escapeHtml(compInfo)}</p>
-            <div class="party-meta">
-                <span>Code: ${escapeHtml(password)}</span>
-                <span>Created: ${created}</span>
-            </div>
-        `;
-        
-        elements.partiesList.appendChild(card);
+        const host = party.get('Host');
+        if (host && host.id === currentUser.id) {
+            hostedParties.push(party);
+        } else {
+            joinedParties.push(party);
+        }
     });
+    
+    elements.partiesList.innerHTML = '';
+    
+    // Display hosted parties
+    if (hostedParties.length > 0) {
+        const hostedSection = document.createElement('div');
+        hostedSection.innerHTML = '<h3 style="margin: 20px 0 10px 0; color: #666;">🎉 Hosted by You</h3>';
+        elements.partiesList.appendChild(hostedSection);
+        
+        hostedParties.forEach(party => {
+            elements.partiesList.appendChild(createPartyCard(party));
+        });
+    }
+    
+    // Display joined parties
+    if (joinedParties.length > 0) {
+        const joinedSection = document.createElement('div');
+        joinedSection.innerHTML = '<h3 style="margin: 20px 0 10px 0; color: #666;">🎊 Joined Parties</h3>';
+        elements.partiesList.appendChild(joinedSection);
+        
+        joinedParties.forEach(party => {
+            elements.partiesList.appendChild(createPartyCard(party));
+        });
+    }
+}
+
+function createPartyCard(party) {
+    const card = document.createElement('div');
+    card.className = 'party-card';
+    card.onclick = () => showPartyScreen(party);
+    
+    const name = party.get('Name');
+    const location = party.get('Location') || 'No location';
+    const password = party.get('Password');
+    const created = party.createdAt.toLocaleDateString();
+    const comp = party.get('whichComp');
+    const compInfo = comp ? `${comp.get('stage')} ${comp.get('year')}` : 'General';
+    
+    card.innerHTML = `
+        <h4>${escapeHtml(name)}</h4>
+        <p>${escapeHtml(location)} • ${escapeHtml(compInfo)}</p>
+        <div class="party-meta">
+            <span>Code: ${escapeHtml(password)}</span>
+            <span>Created: ${created}</span>
+        </div>
+    `;
+    
+    return card;
 }
 
 async function handleCreateParty() {

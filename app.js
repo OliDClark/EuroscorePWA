@@ -15,6 +15,8 @@ const state = {
     currentUser: null,
     currentParty: null,
     userParties: [],
+    hostedParties: [],
+    joinedParties: [],
     currentUserVote: null
 };
 
@@ -255,94 +257,66 @@ async function handleLogout() {
 
 // Party management
 async function loadUserParties() {
-    elements.hostedPartiesList.innerHTML = '<p class="loading">Loading parties...</p>';
-    elements.joinedPartiesList.innerHTML = '';
+    elements.hostedPartiesList.innerHTML = '<p class="loading">Loading hosted parties...</p>';
+    elements.joinedPartiesList.innerHTML = '<p class="loading">Loading joined parties...</p>';
     
     try {
         const Parties = Parse.Object.extend('Parties');
         
-        // Find parties where user is host
+        // Query 1: Find parties where user is host (fast server-side query)
         const hostQuery = new Parse.Query(Parties);
         hostQuery.equalTo('Host', state.currentUser);
         hostQuery.include('Host');
         hostQuery.include('whichComp');
         hostQuery.descending('createdAt');
         
-        const hostedParties = await hostQuery.find();
+        // Query 2: Find parties where user is in Guests relation
+        // We need to query from the Parties class where the Guests relation contains the current user
+        const guestQuery = new Parse.Query(Parties);
+        guestQuery.equalTo('Guests', state.currentUser);
+        guestQuery.include('Host');
+        guestQuery.include('whichComp');
+        guestQuery.descending('createdAt');
         
-        // Find all parties and check Guests relation
-        const allPartiesQuery = new Parse.Query(Parties);
-        allPartiesQuery.include('Host');
-        allPartiesQuery.include('whichComp');
-        allPartiesQuery.descending('createdAt');
+        // Execute both queries in parallel for speed
+        const [hostedParties, joinedParties] = await Promise.all([
+            hostQuery.find(),
+            guestQuery.find()
+        ]);
         
-        const allParties = await allPartiesQuery.find();
+        // Filter out parties where user is both host and guest (show only in hosted)
+        const hostedIds = new Set(hostedParties.map(p => p.id));
+        const filteredJoinedParties = joinedParties.filter(p => !hostedIds.has(p.id));
         
-        // Filter parties where user is a guest
-        const guestParties = [];
-        for (const party of allParties) {
-            const guestsRelation = party.relation('Guests');
-            const guestsQuery = guestsRelation.query();
-            guestsQuery.equalTo('objectId', state.currentUser.id);
-            const isGuest = await guestsQuery.first();
-            if (isGuest) {
-                guestParties.push(party);
-            }
-        }
-        
-        // Combine and deduplicate
-        const partyIds = new Set();
-        state.userParties = [];
-        
-        [...hostedParties, ...guestParties].forEach(party => {
-            if (!partyIds.has(party.id)) {
-                partyIds.add(party.id);
-                state.userParties.push(party);
-            }
-        });
-        
-        // Sort by creation date
-        state.userParties.sort((a, b) => b.createdAt - a.createdAt);
+        // Store in state for reference
+        state.hostedParties = hostedParties;
+        state.joinedParties = filteredJoinedParties;
         
         displayParties();
     } catch (error) {
         console.error('Error loading parties:', error);
-        elements.hostedPartiesList.innerHTML = '<p class="error-message">Failed to load parties</p>';
-        elements.joinedPartiesList.innerHTML = '';
+        elements.hostedPartiesList.innerHTML = '<p class="error-message">Failed to load hosted parties</p>';
+        elements.joinedPartiesList.innerHTML = '<p class="error-message">Failed to load joined parties</p>';
     }
 }
 
 function displayParties() {
-    // Separate parties into hosted and joined
-    const currentUser = Parse.User.current();
-    const hostedParties = [];
-    const joinedParties = [];
-    
-    state.userParties.forEach(party => {
-        const host = party.get('Host');
-        if (host && host.id === currentUser.id) {
-            hostedParties.push(party);
-        } else {
-            joinedParties.push(party);
-        }
-    });
-    
-    // Update hosted parties list
-    if (hostedParties.length === 0) {
+    // Display hosted parties in their tab
+    if (state.hostedParties.length === 0) {
         elements.hostedPartiesList.innerHTML = '<p class="loading">No hosted parties yet. Create one!</p>';
     } else {
         elements.hostedPartiesList.innerHTML = '';
-        hostedParties.forEach(party => {
+        state.hostedParties.forEach(party => {
             elements.hostedPartiesList.appendChild(createPartyCard(party));
         });
     }
     
-    // Update joined parties list
-    if (joinedParties.length === 0) {
+    // Display joined parties in their tab
+    if (state.joinedParties.length === 0) {
         elements.joinedPartiesList.innerHTML = '<p class="loading">No joined parties yet. Join one!</p>';
     } else {
         elements.joinedPartiesList.innerHTML = '';
-        joinedParties.forEach(party => {
+        state.joinedParties.forEach(party => {
             elements.joinedPartiesList.appendChild(createPartyCard(party));
         });
     }

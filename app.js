@@ -256,7 +256,8 @@ async function handleLogout() {
 
 // Party management
 async function loadUserParties() {
-    elements.partiesList.innerHTML = '<p class="loading">Loading parties...</p>';
+    elements.hostedPartiesList.innerHTML = '<p class="loading">Loading parties...</p>';
+    elements.joinedPartiesList.innerHTML = '';
     
     try {
         const Parties = Parse.Object.extend('Parties');
@@ -307,7 +308,8 @@ async function loadUserParties() {
         displayParties();
     } catch (error) {
         console.error('Error loading parties:', error);
-        elements.partiesList.innerHTML = '<p class="error-message">Failed to load parties</p>';
+        elements.hostedPartiesList.innerHTML = '<p class="error-message">Failed to load parties</p>';
+        elements.joinedPartiesList.innerHTML = '';
     }
 }
 

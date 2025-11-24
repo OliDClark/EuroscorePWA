@@ -41,7 +41,6 @@ const elements = {
     logoutBtn: document.getElementById('logout-btn'),
     usernameDisplay: document.getElementById('username-display'),
     
-    partiesList: document.getElementById('parties-list'),
     partyCodeInput: document.getElementById('party-code-input'),
     joinPartyBtn: document.getElementById('join-party-btn'),
     joinError: document.getElementById('join-error'),

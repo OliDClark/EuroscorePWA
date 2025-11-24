@@ -57,7 +57,12 @@ const elements = {
     voteStatus: document.getElementById('vote-status'),
     scoreboardContent: document.getElementById('scoreboard-content'),
     backToMainBtn: document.getElementById('back-to-main-btn'),
-    refreshScoresBtn: document.getElementById('refresh-scores-btn')
+    refreshScoresBtn: document.getElementById('refresh-scores-btn'),
+    
+    hostedPartiesList: document.getElementById('hosted-parties-list'),
+    joinedPartiesList: document.getElementById('joined-parties-list'),
+    hostedSubtab: document.getElementById('hosted-subtab'),
+    joinedSubtab: document.getElementById('joined-subtab')
 };
 
 // Initialize app
@@ -131,6 +136,14 @@ function setupEventListeners() {
         });
     });
     
+    // Sub-tabs (for My Parties)
+    document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const subtab = btn.dataset.subtab;
+            switchSubTab(subtab);
+        });
+    });
+    
     // Party actions
     elements.joinPartyBtn.addEventListener('click', handleJoinParty);
     elements.createPartyBtn.addEventListener('click', handleCreateParty);
@@ -154,6 +167,19 @@ function switchTab(tab) {
         content.classList.add('hidden');
     });
     document.getElementById(`${tab}-tab`).classList.remove('hidden');
+}
+
+function switchSubTab(subtab) {
+    // Update buttons
+    document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.subtab === subtab);
+    });
+    
+    // Update content
+    document.querySelectorAll('.sub-tab-content').forEach(content => {
+        content.classList.add('hidden');
+    });
+    document.getElementById(`${subtab}-subtab`).classList.remove('hidden');
 }
 
 // Authentication handlers
@@ -286,11 +312,6 @@ async function loadUserParties() {
 }
 
 function displayParties() {
-    if (state.userParties.length === 0) {
-        elements.partiesList.innerHTML = '<p class="loading">No parties yet. Create or join one!</p>';
-        return;
-    }
-    
     // Separate parties into hosted and joined
     const currentUser = Parse.User.current();
     const hostedParties = [];
@@ -305,46 +326,25 @@ function displayParties() {
         }
     });
     
-    // Create tabbed interface
-    elements.partiesList.innerHTML = `
-        <div class="parties-tabs">
-            <button class="tab-button active" data-tab="hosted">🎉 Hosted by You (${hostedParties.length})</button>
-            <button class="tab-button" data-tab="joined">🎊 Joined Parties (${joinedParties.length})</button>
-        </div>
-        <div class="tab-content active" id="hosted-tab">
-            ${hostedParties.length === 0 ? '<p class="loading">No hosted parties yet</p>' : ''}
-        </div>
-        <div class="tab-content" id="joined-tab">
-            ${joinedParties.length === 0 ? '<p class="loading">No joined parties yet</p>' : ''}
-        </div>
-    `;
-    
-    // Add hosted parties to the hosted tab
-    const hostedTab = document.getElementById('hosted-tab');
-    hostedParties.forEach(party => {
-        hostedTab.appendChild(createPartyCard(party));
-    });
-    
-    // Add joined parties to the joined tab
-    const joinedTab = document.getElementById('joined-tab');
-    joinedParties.forEach(party => {
-        joinedTab.appendChild(createPartyCard(party));
-    });
-    
-    // Add tab click handlers
-    document.querySelectorAll('.tab-button').forEach(button => {
-        button.addEventListener('click', () => {
-            const tabName = button.dataset.tab;
-            
-            // Update button states
-            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-            button.classList.add('active');
-            
-            // Update tab content visibility
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            document.getElementById(`${tabName}-tab`).classList.add('active');
+    // Update hosted parties list
+    if (hostedParties.length === 0) {
+        elements.hostedPartiesList.innerHTML = '<p class="loading">No hosted parties yet. Create one!</p>';
+    } else {
+        elements.hostedPartiesList.innerHTML = '';
+        hostedParties.forEach(party => {
+            elements.hostedPartiesList.appendChild(createPartyCard(party));
         });
-    });
+    }
+    
+    // Update joined parties list
+    if (joinedParties.length === 0) {
+        elements.joinedPartiesList.innerHTML = '<p class="loading">No joined parties yet. Join one!</p>';
+    } else {
+        elements.joinedPartiesList.innerHTML = '';
+        joinedParties.forEach(party => {
+            elements.joinedPartiesList.appendChild(createPartyCard(party));
+        });
+    }
 }
 
 function createPartyCard(party) {
@@ -361,7 +361,7 @@ function createPartyCard(party) {
     
     card.innerHTML = `
         <h4>${escapeHtml(name)}</h4>
-        <p>${escapeHtml(location)} • ${escapeHtml(compInfo)}</p>
+        <p><strong>${escapeHtml(compInfo)}</strong> • ${escapeHtml(location)}</p>
         <div class="party-meta">
             <span>Code: ${escapeHtml(password)}</span>
             <span>Created: ${created}</span>

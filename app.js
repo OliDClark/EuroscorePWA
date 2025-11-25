@@ -581,9 +581,9 @@ function displaySongs(songs) {
         const songItem = document.createElement('div');
         songItem.className = 'song-item';
         
-        const country = song.get('country') || song.get('Country') || 'Unknown';
+        const country = song.get('countryName') || song.get('CountryName') || 'Unknown';
         const countryCode = song.get('countryCode') || song.get('CountryCode') || '';
-        const artist = song.get('artist') || song.get('Artist') || 'Unknown Artist';
+        const artist = song.get('singer') || song.get('Singer') || 'Unknown Artist';
         const songName = song.get('song') || song.get('Song') || song.get('title') || song.get('Title') || 'Unknown Song';
         
         // Generate flag emoji from country code

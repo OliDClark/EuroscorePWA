@@ -65,7 +65,8 @@ const elements = {
     hostedSubtab: document.getElementById('hosted-subtab'),
     joinedSubtab: document.getElementById('joined-subtab'),
     songsSection: document.getElementById('songs-section'),
-    songsList: document.getElementById('songs-list')
+    songsList: document.getElementById('songs-list'),
+    competitionInfo: document.getElementById('competition-info')
 };
 
 // Initialize app
@@ -472,6 +473,23 @@ async function updatePartyScreen() {
     elements.partyTitle.textContent = party.get('Name');
     elements.partyDescription.textContent = party.get('Location') || 'No location';
     elements.partyCodeDisplay.textContent = party.get('Password');
+    
+    // Display competition stage and year
+    const competition = party.get('whichComp');
+    if (competition) {
+        try {
+            await competition.fetch();
+            const stage = competition.get('stage') || competition.get('Stage') || '';
+            const year = competition.get('year') || competition.get('Year') || '';
+            elements.competitionInfo.textContent = `${stage} ${year}`.trim();
+            elements.competitionInfo.style.display = 'block';
+        } catch (error) {
+            console.error('Error fetching competition:', error);
+            elements.competitionInfo.style.display = 'none';
+        }
+    } else {
+        elements.competitionInfo.style.display = 'none';
+    }
     
     // Load current user's vote
     await loadUserVote();

@@ -63,7 +63,9 @@ const elements = {
     hostedPartiesList: document.getElementById('hosted-parties-list'),
     joinedPartiesList: document.getElementById('joined-parties-list'),
     hostedSubtab: document.getElementById('hosted-subtab'),
-    joinedSubtab: document.getElementById('joined-subtab')
+    joinedSubtab: document.getElementById('joined-subtab'),
+    songsSection: document.getElementById('songs-section'),
+    songsList: document.getElementById('songs-list')
 };
 
 // Initialize app
@@ -474,8 +476,149 @@ async function updatePartyScreen() {
     // Load current user's vote
     await loadUserVote();
     
+    // Load songs from competition
+    await loadPartySongs();
+    
     // Load scoreboard
     await loadScoreboard();
+}
+
+// Load songs for the party based on competition's whereObject
+async function loadPartySongs() {
+    const party = state.currentParty;
+    
+    // Check if party has a competition pointer
+    const competition = party.get('whichComp');
+    
+    if (!competition) {
+        // No competition linked, hide the songs section
+        elements.songsSection.style.display = 'none';
+        return;
+    }
+    
+    // Show the songs section
+    elements.songsSection.style.display = 'block';
+    elements.songsList.innerHTML = '<p class="loading">Loading songs...</p>';
+    
+    try {
+        // Fetch the competition to get the whereObject
+        await competition.fetch();
+        
+        const whereObject = competition.get('whereObject');
+        const stage = competition.get('stage') || competition.get('Stage');
+        
+        if (!whereObject) {
+            elements.songsList.innerHTML = '<p class="error-message">No song filter found for this competition</p>';
+            return;
+        }
+        
+        // Parse the whereObject if it's a string
+        let queryParams = whereObject;
+        if (typeof whereObject === 'string') {
+            queryParams = JSON.parse(whereObject);
+        }
+        
+        // Query the Songs class using the whereObject
+        const Songs = Parse.Object.extend('Songs');
+        const query = new Parse.Query(Songs);
+        
+        // Apply each constraint from whereObject
+        for (const [key, value] of Object.entries(queryParams)) {
+            if (typeof value === 'object' && value !== null) {
+                // Handle special Parse query operators
+                if (value.__type === 'Pointer') {
+                    // Handle pointer values
+                    const pointerObj = Parse.Object.extend(value.className).createWithoutData(value.objectId);
+                    query.equalTo(key, pointerObj);
+                } else {
+                    // Handle other object constraints like $gt, $lt, etc.
+                    for (const [op, opValue] of Object.entries(value)) {
+                        switch (op) {
+                            case '$gt': query.greaterThan(key, opValue); break;
+                            case '$gte': query.greaterThanOrEqualTo(key, opValue); break;
+                            case '$lt': query.lessThan(key, opValue); break;
+                            case '$lte': query.lessThanOrEqualTo(key, opValue); break;
+                            case '$ne': query.notEqualTo(key, opValue); break;
+                            case '$in': query.containedIn(key, opValue); break;
+                            default: query.equalTo(key, value); break;
+                        }
+                    }
+                }
+            } else {
+                query.equalTo(key, value);
+            }
+        }
+        
+        // Determine sort order based on stage
+        const stageLower = (stage || '').toLowerCase();
+        if (stageLower.includes('final') && !stageLower.includes('semi')) {
+            query.ascending('finalOrder');
+        } else {
+            query.ascending('semiOrder');
+        }
+        
+        const songs = await query.find();
+        
+        if (songs.length === 0) {
+            elements.songsList.innerHTML = '<p class="loading">No songs found for this competition</p>';
+            return;
+        }
+        
+        // Display the songs
+        displaySongs(songs);
+        
+    } catch (error) {
+        console.error('Error loading songs:', error);
+        elements.songsList.innerHTML = '<p class="error-message">Failed to load songs: ' + error.message + '</p>';
+    }
+}
+
+// Display songs list
+function displaySongs(songs) {
+    elements.songsList.innerHTML = '';
+    
+    songs.forEach((song, index) => {
+        const songItem = document.createElement('div');
+        songItem.className = 'song-item';
+        
+        const country = song.get('country') || song.get('Country') || 'Unknown';
+        const countryCode = song.get('countryCode') || song.get('CountryCode') || '';
+        const artist = song.get('artist') || song.get('Artist') || 'Unknown Artist';
+        const songName = song.get('song') || song.get('Song') || song.get('title') || song.get('Title') || 'Unknown Song';
+        
+        // Generate flag emoji from country code
+        const flag = countryCode ? getCountryFlag(countryCode) : '🏳️';
+        
+        songItem.innerHTML = `
+            <div class="song-order">${index + 1}</div>
+            <div class="song-flag">${flag}</div>
+            <div class="song-details">
+                <div class="song-country">${escapeHtml(country)}</div>
+                <div class="song-artist">${escapeHtml(artist)}</div>
+                <div class="song-title">${escapeHtml(songName)}</div>
+            </div>
+        `;
+        
+        elements.songsList.appendChild(songItem);
+    });
+}
+
+// Convert country code to flag emoji
+function getCountryFlag(countryCode) {
+    if (!countryCode || countryCode.length !== 2) return '🏳️';
+    
+    const code = countryCode.toUpperCase();
+    const offset = 127397; // Regional indicator symbol offset
+    
+    try {
+        const flag = String.fromCodePoint(
+            code.charCodeAt(0) + offset,
+            code.charCodeAt(1) + offset
+        );
+        return flag;
+    } catch (e) {
+        return '🏳️';
+    }
 }
 
 async function loadUserVote() {

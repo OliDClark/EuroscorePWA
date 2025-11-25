@@ -382,6 +382,108 @@ body {
     color: var(--secondary-color);
 }
 
+/* Songs section */
+.songs-section {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+}
+
+.songs-section h3 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.8rem;
+}
+
+.songs-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.song-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    margin-bottom: 8px;
+    background: var(--bg-color);
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.song-item:hover {
+    transform: translateX(5px);
+    background: rgba(66, 133, 244, 0.1);
+}
+
+.song-order {
+    font-size: 1.2rem;
+    font-weight: bold;
+    min-width: 35px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.song-flag {
+    font-size: 1.8rem;
+    margin: 0 12px;
+}
+
+.song-details {
+    flex: 1;
+}
+
+.song-country {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 1rem;
+}
+
+.song-artist {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.song-title {
+    color: var(--primary-color);
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+/* Sub-tabs styling */
+.sub-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.sub-tab-btn {
+    background: none;
+    border: none;
+    padding: 10px 16px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s;
+}
+
+.sub-tab-btn:hover {
+    color: var(--text-color);
+}
+
+.sub-tab-btn.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+    font-weight: 500;
+}
+
+.sub-tab-content.hidden {
+    display: none;
+}
+
 /* Scoreboard */
 .scoreboard {
     background: var(--card-bg);

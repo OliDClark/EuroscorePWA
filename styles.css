@@ -459,6 +459,13 @@ body {
     font-size: 0.9rem;
 }
 
+.song-vote {
+    font-size: 1.5rem;
+    min-width: 40px;
+    text-align: center;
+    margin-left: 10px;
+}
+
 /* Sub-tabs styling */
 .sub-tabs {
     display: flex;

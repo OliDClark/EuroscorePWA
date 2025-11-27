@@ -591,8 +591,58 @@ async function loadPartySongs() {
     }
 }
 
-// Display songs list
-function displaySongs(songs) {
+// Load user's votes for songs in the current party
+async function loadUserSongVotes(songs) {
+    const party = state.currentParty;
+    const songVotesMap = {};
+    
+    try {
+        const Thumbs = Parse.Object.extend('Thumbs');
+        const query = new Parse.Query(Thumbs);
+        query.equalTo('whoseVote', state.currentUser);
+        query.equalTo('whichParty', party);
+        query.exists('songDeets'); // Only get votes that have a song reference
+        query.include('songDeets');
+        
+        const votes = await query.find();
+        
+        // Map votes by song objectId
+        votes.forEach(vote => {
+            const songDeets = vote.get('songDeets');
+            if (songDeets) {
+                const songId = songDeets.id;
+                songVotesMap[songId] = vote;
+            }
+        });
+    } catch (error) {
+        console.error('Error loading song votes:', error);
+    }
+    
+    return songVotesMap;
+}
+
+// Get vote display for a vote object
+function getVoteDisplay(vote) {
+    if (!vote) return '';
+    
+    const up = vote.get('thumbsUp') || 0;
+    const mid = vote.get('thumbsMid') || 0;
+    const down = vote.get('thumbsDown') || 0;
+    
+    if (up > 0) return '👍';
+    if (mid > 0) return '👊';
+    if (down > 0) return '👎';
+    
+    return '';
+}
+
+// Display songs list with user votes
+async function displaySongs(songs) {
+    elements.songsList.innerHTML = '<p class="loading">Loading votes...</p>';
+    
+    // Load user's votes for these songs
+    const songVotesMap = await loadUserSongVotes(songs);
+    
     elements.songsList.innerHTML = '';
     
     songs.forEach((song, index) => {
@@ -607,6 +657,10 @@ function displaySongs(songs) {
         // Generate flag emoji from country code
         const flag = countryCode ? getCountryFlag(countryCode) : '🏳️';
         
+        // Get user's vote for this song
+        const vote = songVotesMap[song.id];
+        const voteDisplay = getVoteDisplay(vote);
+        
         songItem.innerHTML = `
             <div class="song-order">${index + 1}</div>
             <div class="song-flag">${flag}</div>
@@ -615,6 +669,7 @@ function displaySongs(songs) {
                 <div class="song-artist">${escapeHtml(artist)}</div>
                 <div class="song-title">${escapeHtml(songName)}</div>
             </div>
+            <div class="song-vote">${voteDisplay}</div>
         `;
         
         elements.songsList.appendChild(songItem);

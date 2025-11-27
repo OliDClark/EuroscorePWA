@@ -470,6 +470,14 @@ async function handleJoinParty() {
 async function updatePartyScreen() {
     const party = state.currentParty;
     
+    // Fetch the party object to ensure we have all properties including GuestVoting
+    try {
+        await party.fetch();
+        console.log('Party GuestVoting:', party.get('GuestVoting'));
+    } catch (error) {
+        console.error('Error fetching party details:', error);
+    }
+    
     elements.partyTitle.textContent = party.get('Name');
     elements.partyDescription.textContent = party.get('Location') || 'No location';
     elements.partyCodeDisplay.textContent = party.get('Password');

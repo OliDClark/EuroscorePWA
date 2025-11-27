@@ -628,10 +628,63 @@ async function loadUserSongVotes(songs) {
     return songVotesMap;
 }
 
+// Load all votes for all songs (when GuestVoting is false, show aggregated counts)
+async function loadAllSongVotes(songs) {
+    const party = state.currentParty;
+    const songVotesMap = {};
+    
+    try {
+        const Thumbs = Parse.Object.extend('Thumbs');
+        
+        // Create pointer to the party for proper comparison
+        const Parties = Parse.Object.extend('Parties');
+        const partyPointer = Parties.createWithoutData(party.id);
+        
+        const query = new Parse.Query(Thumbs);
+        query.equalTo('whichParty', partyPointer);
+        query.include('songDeets');
+        
+        const votes = await query.find();
+        
+        console.log('Found all votes for party:', votes.length);
+        
+        // Aggregate votes by song objectId
+        votes.forEach(vote => {
+            const songDeets = vote.get('songDeets');
+            if (songDeets) {
+                const songId = songDeets.id;
+                if (!songVotesMap[songId]) {
+                    songVotesMap[songId] = { up: 0, mid: 0, down: 0 };
+                }
+                songVotesMap[songId].up += vote.get('thumbsUp') || 0;
+                songVotesMap[songId].mid += vote.get('thumbsMid') || 0;
+                songVotesMap[songId].down += vote.get('thumbsDown') || 0;
+            }
+        });
+    } catch (error) {
+        console.error('Error loading all song votes:', error);
+    }
+    
+    return songVotesMap;
+}
+
 // Get vote display for a vote object
-function getVoteDisplay(vote) {
+// When guestVoting is false, show aggregated counts; otherwise show single emoji
+function getVoteDisplay(vote, guestVoting = true) {
     if (!vote) return '';
     
+    // If guestVoting is false, vote is an object with aggregated counts {up, mid, down}
+    if (!guestVoting) {
+        const up = vote.up || 0;
+        const mid = vote.mid || 0;
+        const down = vote.down || 0;
+        
+        if (up === 0 && mid === 0 && down === 0) return '';
+        
+        return `👍${up} 👊${mid} 👎${down}`;
+    }
+    
+    // GuestVoting is true - show single emoji for user's vote
     const up = vote.get('thumbsUp') || 0;
     const mid = vote.get('thumbsMid') || 0;
     const down = vote.get('thumbsDown') || 0;
@@ -647,8 +700,18 @@ function getVoteDisplay(vote) {
 async function displaySongs(songs) {
     elements.songsList.innerHTML = '<p class="loading">Loading votes...</p>';
     
-    // Load user's votes for these songs
-    const songVotesMap = await loadUserSongVotes(songs);
+    // Check if GuestVoting is false - if so, show aggregated counts
+    const party = state.currentParty;
+    const guestVoting = party.get('GuestVoting') !== false; // Default to true if not set
+    
+    let songVotesMap;
+    if (guestVoting) {
+        // Load user's votes for these songs
+        songVotesMap = await loadUserSongVotes(songs);
+    } else {
+        // Load all votes aggregated for each song
+        songVotesMap = await loadAllSongVotes(songs);
+    }
     
     elements.songsList.innerHTML = '';
     
@@ -664,9 +727,9 @@ async function displaySongs(songs) {
         // Generate flag emoji from country code
         const flag = countryCode ? getCountryFlag(countryCode) : '🏳️';
         
-        // Get user's vote for this song
+        // Get vote for this song
         const vote = songVotesMap[song.id];
-        const voteDisplay = getVoteDisplay(vote);
+        const voteDisplay = getVoteDisplay(vote, guestVoting);
         
         songItem.innerHTML = `
             <div class="song-order">${index + 1}</div>

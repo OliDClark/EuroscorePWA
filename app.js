@@ -598,13 +598,19 @@ async function loadUserSongVotes(songs) {
     
     try {
         const Thumbs = Parse.Object.extend('Thumbs');
+        
+        // Create pointer to the party for proper comparison
+        const Parties = Parse.Object.extend('Parties');
+        const partyPointer = Parties.createWithoutData(party.id);
+        
         const query = new Parse.Query(Thumbs);
         query.equalTo('whoseVote', state.currentUser);
-        query.equalTo('whichParty', party);
-        query.exists('songDeets'); // Only get votes that have a song reference
+        query.equalTo('whichParty', partyPointer);
         query.include('songDeets');
         
         const votes = await query.find();
+        
+        console.log('Found votes for user:', votes.length);
         
         // Map votes by song objectId
         votes.forEach(vote => {
@@ -612,6 +618,7 @@ async function loadUserSongVotes(songs) {
             if (songDeets) {
                 const songId = songDeets.id;
                 songVotesMap[songId] = vote;
+                console.log('Vote for song:', songId, 'up:', vote.get('thumbsUp'), 'mid:', vote.get('thumbsMid'), 'down:', vote.get('thumbsDown'));
             }
         });
     } catch (error) {

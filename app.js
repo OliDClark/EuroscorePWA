@@ -909,29 +909,43 @@ async function loadUserVote() {
 async function handleVote(voteValue) {
     try {
         const Thumbs = Parse.Object.extend('Thumbs');
+        const Parties = Parse.Object.extend('Parties');
+        const partyPointer = Parties.createWithoutData(state.currentParty.id);
         let vote;
         
         // Check if we're voting for a specific song
         const isVotingForSong = state.selectedSong !== null;
         
-        if (state.currentUserVote) {
-            // Update existing vote
-            vote = state.currentUserVote;
-        } else {
-            // Create new vote
-            vote = new Thumbs();
-            vote.set('whoseVote', state.currentUser);
-            vote.set('whichParty', state.currentParty);
-            const comp = state.currentParty.get('whichComp');
-            if (comp) {
-                vote.set('whichComp', comp);
-            }
-            
-            // If voting for a song, set the songDeets pointer
-            if (isVotingForSong) {
+        if (isVotingForSong) {
+            // When voting for a song, check if we already have a vote for THIS specific song
+            if (state.currentUserVote && state.currentUserVote.get('songDeets') && 
+                state.currentUserVote.get('songDeets').id === state.selectedSong.id) {
+                // Update existing vote for this song
+                vote = state.currentUserVote;
+            } else {
+                // Create new vote for this song
+                vote = new Thumbs();
+                vote.set('whoseVote', state.currentUser);
+                vote.set('whichParty', partyPointer);
+                const comp = state.currentParty.get('whichComp');
+                if (comp) {
+                    vote.set('whichComp', comp);
+                }
                 const Songs = Parse.Object.extend('Songs');
                 const songPointer = Songs.createWithoutData(state.selectedSong.id);
                 vote.set('songDeets', songPointer);
+            }
+        } else if (state.currentUserVote) {
+            // Update existing vote (general party vote, not song-specific)
+            vote = state.currentUserVote;
+        } else {
+            // Create new general party vote
+            vote = new Thumbs();
+            vote.set('whoseVote', state.currentUser);
+            vote.set('whichParty', partyPointer);
+            const comp = state.currentParty.get('whichComp');
+            if (comp) {
+                vote.set('whichComp', comp);
             }
         }
         

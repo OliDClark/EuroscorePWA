@@ -17,7 +17,10 @@ const state = {
     userParties: [],
     hostedParties: [],
     joinedParties: [],
-    currentUserVote: null
+    currentUserVote: null,
+    selectedSong: null,
+    songVotesMap: {},
+    allSongs: []
 };
 
 // DOM elements cache
@@ -708,6 +711,9 @@ function getVoteDisplay(vote, guestVoting = true) {
 async function displaySongs(songs) {
     elements.songsList.innerHTML = '<p class="loading">Loading votes...</p>';
     
+    // Store songs in state for reference
+    state.allSongs = songs;
+    
     // Check if GuestVoting is false - if so, show aggregated counts
     const party = state.currentParty;
     const guestVoting = party.get('GuestVoting') !== false; // Default to true if not set
@@ -721,11 +727,15 @@ async function displaySongs(songs) {
         songVotesMap = await loadAllSongVotes(songs);
     }
     
+    // Store votes map in state for reference
+    state.songVotesMap = songVotesMap;
+    
     elements.songsList.innerHTML = '';
     
     songs.forEach((song, index) => {
         const songItem = document.createElement('div');
         songItem.className = 'song-item';
+        songItem.dataset.songId = song.id;
         
         const country = song.get('countryName') || song.get('CountryName') || 'Unknown';
         const countryCode = song.get('countryCode') || song.get('CountryCode') || '';
@@ -750,8 +760,83 @@ async function displaySongs(songs) {
             <div class="song-vote">${voteDisplay}</div>
         `;
         
+        // Add click handler to select this song for voting
+        songItem.addEventListener('click', () => selectSongForVoting(song));
+        
         elements.songsList.appendChild(songItem);
     });
+}
+
+// Select a song for voting
+async function selectSongForVoting(song) {
+    state.selectedSong = song;
+    
+    // Highlight the selected song
+    document.querySelectorAll('.song-item').forEach(item => {
+        item.classList.remove('selected');
+        if (item.dataset.songId === song.id) {
+            item.classList.add('selected');
+        }
+    });
+    
+    const country = song.get('countryName') || song.get('CountryName') || 'Unknown';
+    const countryCode = song.get('countryCode') || song.get('CountryCode') || '';
+    const flag = countryCode ? getCountryFlag(countryCode) : '🏳️';
+    
+    // Update the voting section header to show which song is selected
+    const votingSection = document.querySelector('.voting-section h3');
+    if (votingSection) {
+        votingSection.innerHTML = `Cast Your Vote for ${flag} ${escapeHtml(country)}`;
+    }
+    
+    // Load and display existing vote for this song
+    await loadSongVote(song);
+}
+
+// Load existing vote for a specific song
+async function loadSongVote(song) {
+    try {
+        const Thumbs = Parse.Object.extend('Thumbs');
+        const Parties = Parse.Object.extend('Parties');
+        const partyPointer = Parties.createWithoutData(state.currentParty.id);
+        
+        const Songs = Parse.Object.extend('Songs');
+        const songPointer = Songs.createWithoutData(song.id);
+        
+        const query = new Parse.Query(Thumbs);
+        query.equalTo('whoseVote', state.currentUser);
+        query.equalTo('whichParty', partyPointer);
+        query.equalTo('songDeets', songPointer);
+        
+        const vote = await query.first();
+        
+        // Update UI
+        document.querySelectorAll('.vote-btn').forEach(btn => {
+            btn.classList.remove('selected');
+        });
+        
+        if (vote) {
+            state.currentUserVote = vote;
+            const up = vote.get('thumbsUp') || 0;
+            const mid = vote.get('thumbsMid') || 0;
+            const down = vote.get('thumbsDown') || 0;
+            
+            let voteValue = 'middle';
+            if (up > 0) voteValue = 'up';
+            else if (down > 0) voteValue = 'down';
+            
+            const btn = document.querySelector(`.vote-btn[data-vote="${voteValue}"]`);
+            if (btn) {
+                btn.classList.add('selected');
+            }
+            elements.voteStatus.textContent = `You voted: ${getVoteEmoji(voteValue)}`;
+        } else {
+            state.currentUserVote = null;
+            elements.voteStatus.textContent = 'No vote yet for this song';
+        }
+    } catch (error) {
+        console.error('Error loading song vote:', error);
+    }
 }
 
 // Convert country code to flag emoji
@@ -773,6 +858,15 @@ function getCountryFlag(countryCode) {
 }
 
 async function loadUserVote() {
+    // Reset selected song when entering party screen
+    state.selectedSong = null;
+    
+    // Reset voting header
+    const votingSection = document.querySelector('.voting-section h3');
+    if (votingSection) {
+        votingSection.textContent = 'Cast Your Vote';
+    }
+    
     try {
         const Thumbs = Parse.Object.extend('Thumbs');
         const query = new Parse.Query(Thumbs);
@@ -805,7 +899,7 @@ async function loadUserVote() {
             elements.voteStatus.textContent = `You voted: ${getVoteEmoji(voteValue)}`;
         } else {
             state.currentUserVote = null;
-            elements.voteStatus.textContent = 'You haven\'t voted yet';
+            elements.voteStatus.textContent = 'Select a song to vote';
         }
     } catch (error) {
         console.error('Error loading vote:', error);
@@ -816,6 +910,9 @@ async function handleVote(voteValue) {
     try {
         const Thumbs = Parse.Object.extend('Thumbs');
         let vote;
+        
+        // Check if we're voting for a specific song
+        const isVotingForSong = state.selectedSong !== null;
         
         if (state.currentUserVote) {
             // Update existing vote
@@ -828,6 +925,13 @@ async function handleVote(voteValue) {
             const comp = state.currentParty.get('whichComp');
             if (comp) {
                 vote.set('whichComp', comp);
+            }
+            
+            // If voting for a song, set the songDeets pointer
+            if (isVotingForSong) {
+                const Songs = Parse.Object.extend('Songs');
+                const songPointer = Songs.createWithoutData(state.selectedSong.id);
+                vote.set('songDeets', songPointer);
             }
         }
         
@@ -859,12 +963,39 @@ async function handleVote(voteValue) {
         
         elements.voteStatus.textContent = `Vote saved: ${getVoteEmoji(voteValue)}`;
         
+        // If we voted for a song, refresh the songs list to show updated vote
+        if (isVotingForSong) {
+            await refreshSongVoteDisplay(state.selectedSong.id, voteValue);
+        }
+        
         // Refresh scoreboard
         await loadScoreboard();
         
     } catch (error) {
         console.error('Error saving vote:', error);
         elements.voteStatus.textContent = 'Failed to save vote';
+    }
+}
+
+// Refresh the vote display for a specific song after voting
+async function refreshSongVoteDisplay(songId, voteValue) {
+    const party = state.currentParty;
+    const guestVoting = party.get('GuestVoting') !== false;
+    
+    const songItem = document.querySelector(`.song-item[data-song-id="${songId}"]`);
+    if (!songItem) return;
+    
+    const voteDisplay = songItem.querySelector('.song-vote');
+    if (!voteDisplay) return;
+    
+    if (guestVoting) {
+        // Show user's own vote
+        voteDisplay.textContent = getVoteEmoji(voteValue);
+    } else {
+        // Reload all votes and update display
+        const songVotesMap = await loadAllSongVotes(state.allSongs);
+        const vote = songVotesMap[songId];
+        voteDisplay.textContent = getVoteDisplay(vote, false);
     }
 }
 

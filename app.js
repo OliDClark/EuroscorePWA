@@ -789,8 +789,180 @@ async function selectSongForVoting(song) {
         votingSection.innerHTML = `Cast Your Vote for ${flag} ${escapeHtml(country)}`;
     }
     
-    // Load and display existing vote for this song
-    await loadSongVote(song);
+    // Check if GuestVoting is false - show counter interface with +/- buttons
+    const party = state.currentParty;
+    const guestVoting = party.get('GuestVoting') !== false;
+    
+    if (!guestVoting) {
+        // Show counter interface with +/- buttons
+        await showCounterVotingInterface(song);
+    } else {
+        // Show normal voting interface
+        showNormalVotingInterface();
+        await loadSongVote(song);
+    }
+}
+
+// Show the normal voting interface (single vote buttons)
+function showNormalVotingInterface() {
+    const voteButtonsContainer = document.querySelector('.vote-buttons');
+    if (voteButtonsContainer) {
+        voteButtonsContainer.innerHTML = `
+            <button class="vote-btn" data-vote="up" title="Thumbs Up">
+                👍
+                <span>Up</span>
+            </button>
+            <button class="vote-btn" data-vote="middle" title="Thumbs Middle">
+                👊
+                <span>Middle</span>
+            </button>
+            <button class="vote-btn" data-vote="down" title="Thumbs Down">
+                👎
+                <span>Down</span>
+            </button>
+        `;
+        
+        // Re-attach event listeners
+        voteButtonsContainer.querySelectorAll('.vote-btn').forEach(btn => {
+            btn.addEventListener('click', () => castVote(btn.dataset.vote));
+        });
+    }
+}
+
+// Show the counter voting interface with +/- buttons (when GuestVoting is false)
+async function showCounterVotingInterface(song) {
+    // Load aggregated votes for this specific song
+    const votes = state.songVotesMap[song.id] || { up: 0, mid: 0, down: 0 };
+    
+    const voteButtonsContainer = document.querySelector('.vote-buttons');
+    if (voteButtonsContainer) {
+        voteButtonsContainer.innerHTML = `
+            <div class="counter-vote">
+                <span class="vote-emoji">👍</span>
+                <div class="counter-controls">
+                    <button class="counter-btn minus" data-type="up">−</button>
+                    <span class="counter-value" id="counter-up">${votes.up}</span>
+                    <button class="counter-btn plus" data-type="up">+</button>
+                </div>
+            </div>
+            <div class="counter-vote">
+                <span class="vote-emoji">👊</span>
+                <div class="counter-controls">
+                    <button class="counter-btn minus" data-type="mid">−</button>
+                    <span class="counter-value" id="counter-mid">${votes.mid}</span>
+                    <button class="counter-btn plus" data-type="mid">+</button>
+                </div>
+            </div>
+            <div class="counter-vote">
+                <span class="vote-emoji">👎</span>
+                <div class="counter-controls">
+                    <button class="counter-btn minus" data-type="down">−</button>
+                    <span class="counter-value" id="counter-down">${votes.down}</span>
+                    <button class="counter-btn plus" data-type="down">+</button>
+                </div>
+            </div>
+        `;
+        
+        // Attach event listeners for +/- buttons
+        voteButtonsContainer.querySelectorAll('.counter-btn.plus').forEach(btn => {
+            btn.addEventListener('click', () => adjustVoteCount(btn.dataset.type, 1));
+        });
+        voteButtonsContainer.querySelectorAll('.counter-btn.minus').forEach(btn => {
+            btn.addEventListener('click', () => adjustVoteCount(btn.dataset.type, -1));
+        });
+    }
+    
+    elements.voteStatus.textContent = 'Tap + or - to adjust vote counts';
+}
+
+// Adjust vote count (for counter interface when GuestVoting is false)
+async function adjustVoteCount(type, delta) {
+    if (!state.selectedSong || !state.currentParty) {
+        console.error('No song or party selected');
+        return;
+    }
+    
+    const song = state.selectedSong;
+    const songId = song.id;
+    
+    // Update the local counter display
+    const counterEl = document.getElementById(`counter-${type}`);
+    if (counterEl) {
+        let currentValue = parseInt(counterEl.textContent) || 0;
+        currentValue = Math.max(0, currentValue + delta); // Don't go below 0
+        counterEl.textContent = currentValue;
+    }
+    
+    // Save to Parse Server - create or update vote object
+    try {
+        const Thumbs = Parse.Object.extend('Thumbs');
+        const Parties = Parse.Object.extend('Parties');
+        const Songs = Parse.Object.extend('Songs');
+        
+        const partyPointer = Parties.createWithoutData(state.currentParty.id);
+        const songPointer = Songs.createWithoutData(songId);
+        
+        // Query for existing vote from this user for this song
+        const query = new Parse.Query(Thumbs);
+        query.equalTo('whoseVote', state.currentUser);
+        query.equalTo('whichParty', partyPointer);
+        query.equalTo('songDeets', songPointer);
+        
+        let vote = await query.first();
+        
+        if (!vote) {
+            // Create new vote object
+            vote = new Thumbs();
+            vote.set('whoseVote', state.currentUser);
+            vote.set('whichParty', partyPointer);
+            vote.set('songDeets', songPointer);
+            vote.set('thumbsUp', 0);
+            vote.set('thumbsMid', 0);
+            vote.set('thumbsDown', 0);
+        }
+        
+        // Determine which field to update
+        let fieldName;
+        switch (type) {
+            case 'up': fieldName = 'thumbsUp'; break;
+            case 'mid': fieldName = 'thumbsMid'; break;
+            case 'down': fieldName = 'thumbsDown'; break;
+            default: return;
+        }
+        
+        // Update the count (don't go below 0)
+        const newValue = Math.max(0, (vote.get(fieldName) || 0) + delta);
+        vote.set(fieldName, newValue);
+        
+        await vote.save();
+        
+        // Update state songVotesMap
+        if (!state.songVotesMap[songId]) {
+            state.songVotesMap[songId] = { up: 0, mid: 0, down: 0 };
+        }
+        state.songVotesMap[songId][type] = newValue;
+        
+        // Update the song item display
+        updateSongVoteDisplay(songId);
+        
+        elements.voteStatus.textContent = 'Vote updated!';
+    } catch (error) {
+        console.error('Error adjusting vote count:', error);
+        elements.voteStatus.textContent = 'Error saving vote';
+    }
+}
+
+// Update the vote display for a specific song in the list
+function updateSongVoteDisplay(songId) {
+    const songItem = document.querySelector(`.song-item[data-song-id="${songId}"]`);
+    if (songItem) {
+        const voteEl = songItem.querySelector('.song-vote');
+        if (voteEl) {
+            const votes = state.songVotesMap[songId] || { up: 0, mid: 0, down: 0 };
+            const guestVoting = state.currentParty.get('GuestVoting') !== false;
+            voteEl.textContent = getVoteDisplay(votes, guestVoting);
+        }
+    }
 }
 
 // Load existing vote for a specific song

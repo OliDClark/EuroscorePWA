@@ -840,25 +840,25 @@ async function showCounterVotingInterface(song) {
             <div class="counter-vote">
                 <span class="vote-emoji">👍</span>
                 <div class="counter-controls">
-                    <button class="counter-btn minus" data-type="up">−</button>
-                    <span class="counter-value" id="counter-up">${votes.up}</span>
                     <button class="counter-btn plus" data-type="up">+</button>
+                    <span class="counter-value" id="counter-up">${votes.up}</span>
+                    <button class="counter-btn minus" data-type="up">−</button>
                 </div>
             </div>
             <div class="counter-vote">
                 <span class="vote-emoji">👊</span>
                 <div class="counter-controls">
-                    <button class="counter-btn minus" data-type="mid">−</button>
-                    <span class="counter-value" id="counter-mid">${votes.mid}</span>
                     <button class="counter-btn plus" data-type="mid">+</button>
+                    <span class="counter-value" id="counter-mid">${votes.mid}</span>
+                    <button class="counter-btn minus" data-type="mid">−</button>
                 </div>
             </div>
             <div class="counter-vote">
                 <span class="vote-emoji">👎</span>
                 <div class="counter-controls">
-                    <button class="counter-btn minus" data-type="down">−</button>
-                    <span class="counter-value" id="counter-down">${votes.down}</span>
                     <button class="counter-btn plus" data-type="down">+</button>
+                    <span class="counter-value" id="counter-down">${votes.down}</span>
+                    <button class="counter-btn minus" data-type="down">−</button>
                 </div>
             </div>
         `;
@@ -1033,10 +1033,16 @@ async function loadUserVote() {
     // Reset selected song when entering party screen
     state.selectedSong = null;
     
-    // Reset voting header
+    // Reset voting header and show initial message
     const votingSection = document.querySelector('.voting-section h3');
     if (votingSection) {
         votingSection.textContent = 'Cast Your Vote';
+    }
+    
+    // Replace vote buttons with instruction message when no country is selected
+    const voteButtonsContainer = document.querySelector('.vote-buttons');
+    if (voteButtonsContainer) {
+        voteButtonsContainer.innerHTML = '<p class="select-country-msg">Click on a Country below to start voting.</p>';
     }
     
     try {
@@ -1071,7 +1077,7 @@ async function loadUserVote() {
             elements.voteStatus.textContent = `You voted: ${getVoteEmoji(voteValue)}`;
         } else {
             state.currentUserVote = null;
-            elements.voteStatus.textContent = 'Select a song to vote';
+            elements.voteStatus.textContent = '';
         }
     } catch (error) {
         console.error('Error loading vote:', error);

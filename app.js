@@ -1311,16 +1311,25 @@ async function loadScoreboard() {
             };
         });
         
+        // Ensure no country has a negative score - add offset if needed
+        const minScore = Math.min(...rankings.map(c => c.rawScore));
+        if (minScore < 0) {
+            const offset = Math.abs(minScore);
+            rankings.forEach(country => {
+                country.rawScore += offset;
+            });
+        }
+        
         // Sort by rawScore descending
         rankings.sort((a, b) => b.rawScore - a.rawScore);
         
-        // Calculate points using formula: (this country's score/sum of all countries' scores) * (24 * number of competing countries)
+        // Calculate points using formula: (this country's score/sum of all countries' scores) * (116 * number of competing countries)
         const numCountries = rankings.length;
         const sumOfScores = rankings.reduce((sum, country) => sum + country.rawScore, 0);
         
         rankings.forEach(country => {
             if (sumOfScores > 0) {
-                country.points = Math.round((country.rawScore / sumOfScores) * (24 * numCountries));
+                country.points = Math.round((country.rawScore / sumOfScores) * (116 * numCountries));
             } else {
                 country.points = 0;
             }

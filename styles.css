@@ -576,6 +576,43 @@ body {
     display: none;
 }
 
+/* Party Detail Tabs */
+.party-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.party-tab-btn {
+    background: none;
+    border: none;
+    padding: 12px 20px;
+    font-size: 1rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s;
+}
+
+.party-tab-btn:hover {
+    color: var(--text-color);
+}
+
+.party-tab-btn.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+    font-weight: 500;
+}
+
+.party-tab-content {
+    animation: fadeIn 0.3s;
+}
+
+.party-tab-content.hidden {
+    display: none;
+}
+
 /* Scoreboard */
 .scoreboard {
     background: var(--card-bg);
@@ -626,6 +663,11 @@ body {
 
 .score-rank.bronze {
     color: #cd7f32;
+}
+
+.score-flag {
+    font-size: 1.5rem;
+    margin-right: 10px;
 }
 
 .score-user {

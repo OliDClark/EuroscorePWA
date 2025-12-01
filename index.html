@@ -117,38 +117,50 @@
                     <p class="party-code">Party Code: <strong id="party-code-display"></strong></p>
                 </div>
 
-                <div class="voting-section">
-                    <h3>Cast Your Vote</h3>
-                    <div class="vote-buttons">
-                        <button class="vote-btn" data-vote="up" title="Thumbs Up">
-                            👍
-                            <span>Up</span>
-                        </button>
-                        <button class="vote-btn" data-vote="middle" title="Thumbs Middle">
-                            👊
-                            <span>Middle</span>
-                        </button>
-                        <button class="vote-btn" data-vote="down" title="Thumbs Down">
-                            👎
-                            <span>Down</span>
-                        </button>
-                    </div>
-                    <p id="vote-status" class="vote-status"></p>
+                <!-- Party Detail Tabs -->
+                <div class="party-tabs">
+                    <button class="party-tab-btn active" data-partytab="voting">🗳️ Voting</button>
+                    <button class="party-tab-btn" data-partytab="scoreboard">🏆 Scoreboard</button>
                 </div>
 
-                <div class="songs-section" id="songs-section">
-                    <h3>🎵 Songs</h3>
-                    <div id="songs-list" class="songs-list">
-                        <p class="loading">Loading songs...</p>
+                <!-- Voting Tab -->
+                <div id="voting-tab" class="party-tab-content active">
+                    <div class="voting-section">
+                        <h3>Cast Your Vote</h3>
+                        <div class="vote-buttons">
+                            <button class="vote-btn" data-vote="up" title="Thumbs Up">
+                                👍
+                                <span>Up</span>
+                            </button>
+                            <button class="vote-btn" data-vote="middle" title="Thumbs Middle">
+                                👊
+                                <span>Middle</span>
+                            </button>
+                            <button class="vote-btn" data-vote="down" title="Thumbs Down">
+                                👎
+                                <span>Down</span>
+                            </button>
+                        </div>
+                        <p id="vote-status" class="vote-status"></p>
+                    </div>
+
+                    <div class="songs-section" id="songs-section">
+                        <h3>🎵 Songs</h3>
+                        <div id="songs-list" class="songs-list">
+                            <p class="loading">Loading songs...</p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="scoreboard">
-                    <h3>🏆 Scoreboard</h3>
-                    <div id="scoreboard-content" class="scoreboard-content">
-                        <p class="loading">Loading scores...</p>
+                <!-- Scoreboard Tab -->
+                <div id="scoreboard-tab" class="party-tab-content hidden">
+                    <div class="scoreboard">
+                        <h3>🏆 Country Rankings</h3>
+                        <div id="scoreboard-content" class="scoreboard-content">
+                            <p class="loading">Loading scores...</p>
+                        </div>
+                        <button id="refresh-scores-btn" class="btn btn-secondary">Refresh Rankings</button>
                     </div>
-                    <button id="refresh-scores-btn" class="btn btn-secondary">Refresh Scores</button>
                 </div>
             </div>
         </div>

@@ -151,6 +151,14 @@ function setupEventListeners() {
         });
     });
     
+    // Party tabs (for Party Detail screen)
+    document.querySelectorAll('.party-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const partytab = btn.dataset.partytab;
+            switchPartyTab(partytab);
+        });
+    });
+    
     // Party actions
     elements.joinPartyBtn.addEventListener('click', handleJoinParty);
     elements.createPartyBtn.addEventListener('click', handleCreateParty);
@@ -187,6 +195,24 @@ function switchSubTab(subtab) {
         content.classList.add('hidden');
     });
     document.getElementById(`${subtab}-subtab`).classList.remove('hidden');
+}
+
+function switchPartyTab(partytab) {
+    // Update buttons
+    document.querySelectorAll('.party-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.partytab === partytab);
+    });
+    
+    // Update content
+    document.querySelectorAll('.party-tab-content').forEach(content => {
+        content.classList.add('hidden');
+    });
+    document.getElementById(`${partytab}-tab`).classList.remove('hidden');
+    
+    // If switching to scoreboard tab, refresh the scoreboard
+    if (partytab === 'scoreboard') {
+        loadScoreboard();
+    }
 }
 
 // Authentication handlers
@@ -1192,67 +1218,84 @@ async function refreshSongVoteDisplay(songId, voteValue) {
 }
 
 async function loadScoreboard() {
-    elements.scoreboardContent.innerHTML = '<p class="loading">Loading scores...</p>';
+    elements.scoreboardContent.innerHTML = '<p class="loading">Loading rankings...</p>';
     
     try {
         const Thumbs = Parse.Object.extend('Thumbs');
+        const Parties = Parse.Object.extend('Parties');
+        const partyPointer = Parties.createWithoutData(state.currentParty.id);
+        
         const query = new Parse.Query(Thumbs);
-        query.equalTo('whichParty', state.currentParty);
-        query.doesNotExist('songDeets'); // Get votes not tied to specific songs
-        query.include('whoseVote');
+        query.equalTo('whichParty', partyPointer);
+        query.include('songDeets');
         
         const votes = await query.find();
         
-        // Calculate scores
-        const scoreMap = {};
+        // Aggregate votes by country (via song)
+        const countryScores = {};
         
         votes.forEach(vote => {
-            const user = vote.get('whoseVote');
-            if (!user) return;
+            const song = vote.get('songDeets');
+            if (!song) return;
             
-            const username = user.get('Name') || user.getUsername();
+            const countryName = song.get('countryName') || song.get('CountryName') || 'Unknown';
+            const countryCode = song.get('countryCode') || song.get('CountryCode') || '';
             const up = vote.get('thumbsUp') || 0;
             const mid = vote.get('thumbsMid') || 0;
             const down = vote.get('thumbsDown') || 0;
             
-            if (!scoreMap[username]) {
-                scoreMap[username] = {
-                    username: username,
+            if (!countryScores[countryName]) {
+                countryScores[countryName] = {
+                    countryName: countryName,
+                    countryCode: countryCode,
                     up: 0,
-                    middle: 0,
+                    mid: 0,
                     down: 0,
-                    total: 0
+                    totalVotes: 0
                 };
             }
             
-            scoreMap[username].up += up;
-            scoreMap[username].middle += mid;
-            scoreMap[username].down += down;
-            
-            // Calculate total: up = +1, middle = 0, down = -1
-            scoreMap[username].total += up - down;
+            countryScores[countryName].up += up;
+            countryScores[countryName].mid += mid;
+            countryScores[countryName].down += down;
+            countryScores[countryName].totalVotes += up + mid + down;
         });
         
-        // Convert to array and sort
-        const scores = Object.values(scoreMap).sort((a, b) => b.total - a.total);
+        // Calculate score using formula: (((Thumbs up*2) - Thumbs down) / Total votes + random(0,1))
+        const rankings = Object.values(countryScores).map(country => {
+            let score = 0;
+            if (country.totalVotes > 0) {
+                score = ((country.up * 2) - country.down) / country.totalVotes;
+            }
+            // Add random tiebreaker between 0 and 1
+            score += Math.random();
+            
+            return {
+                ...country,
+                score: score
+            };
+        });
         
-        displayScoreboard(scores);
+        // Sort by score descending
+        rankings.sort((a, b) => b.score - a.score);
+        
+        displayScoreboard(rankings);
         
     } catch (error) {
         console.error('Error loading scoreboard:', error);
-        elements.scoreboardContent.innerHTML = '<p class="error-message">Failed to load scores</p>';
+        elements.scoreboardContent.innerHTML = '<p class="error-message">Failed to load rankings</p>';
     }
 }
 
-function displayScoreboard(scores) {
-    if (scores.length === 0) {
-        elements.scoreboardContent.innerHTML = '<p class="loading">No votes yet. Be the first to vote!</p>';
+function displayScoreboard(rankings) {
+    if (rankings.length === 0) {
+        elements.scoreboardContent.innerHTML = '<p class="loading">No votes yet. Vote on countries to see rankings!</p>';
         return;
     }
     
     elements.scoreboardContent.innerHTML = '';
     
-    scores.forEach((score, index) => {
+    rankings.forEach((country, index) => {
         const item = document.createElement('div');
         item.className = 'score-item';
         
@@ -1262,17 +1305,17 @@ function displayScoreboard(scores) {
         else if (rank === 2) rankClass = 'silver';
         else if (rank === 3) rankClass = 'bronze';
         
-        const isCurrentUser = score.username === state.currentUser.getUsername();
+        const flag = country.countryCode ? getCountryFlag(country.countryCode) : '🏳️';
         
         item.innerHTML = `
             <div class="score-rank ${rankClass}">${rank}</div>
-            <div class="score-user">${escapeHtml(score.username)}${isCurrentUser ? ' (You)' : ''}</div>
+            <div class="score-flag">${flag}</div>
+            <div class="score-user">${escapeHtml(country.countryName)}</div>
             <div class="score-votes">
-                <span>👍 ${score.up}</span>
-                <span>👊 ${score.middle}</span>
-                <span>👎 ${score.down}</span>
+                <span>👍 ${country.up}</span>
+                <span>👊 ${country.mid}</span>
+                <span>👎 ${country.down}</span>
             </div>
-            <div class="score-total">${score.total > 0 ? '+' : ''}${score.total}</div>
         `;
         
         elements.scoreboardContent.appendChild(item);

@@ -675,6 +675,32 @@ body {
     font-weight: 500;
 }
 
+.score-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.score-country {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.score-song-info {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.score-points {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    min-width: 50px;
+    text-align: center;
+    margin: 0 15px;
+}
+
 .score-votes {
     display: flex;
     gap: 15px;

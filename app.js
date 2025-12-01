@@ -1246,11 +1246,15 @@ async function loadScoreboard() {
             state.allSongs.forEach(song => {
                 const countryName = song.get('countryName') || song.get('CountryName') || 'Unknown';
                 const countryCode = song.get('countryCode') || song.get('CountryCode') || '';
+                const singer = song.get('singer') || song.get('Singer') || '';
+                const songTitle = song.get('song') || song.get('Song') || '';
                 
                 if (!countryScores[countryName]) {
                     countryScores[countryName] = {
                         countryName: countryName,
                         countryCode: countryCode,
+                        singer: singer,
+                        songTitle: songTitle,
                         up: 0,
                         mid: 0,
                         down: 0,
@@ -1267,6 +1271,8 @@ async function loadScoreboard() {
             
             const countryName = song.get('countryName') || song.get('CountryName') || 'Unknown';
             const countryCode = song.get('countryCode') || song.get('CountryCode') || '';
+            const singer = song.get('singer') || song.get('Singer') || '';
+            const songTitle = song.get('song') || song.get('Song') || '';
             const up = vote.get('thumbsUp') || 0;
             const mid = vote.get('thumbsMid') || 0;
             const down = vote.get('thumbsDown') || 0;
@@ -1275,6 +1281,8 @@ async function loadScoreboard() {
                 countryScores[countryName] = {
                     countryName: countryName,
                     countryCode: countryCode,
+                    singer: singer,
+                    songTitle: songTitle,
                     up: 0,
                     mid: 0,
                     down: 0,
@@ -1288,23 +1296,35 @@ async function loadScoreboard() {
             countryScores[countryName].totalVotes += up + mid + down;
         });
         
-        // Calculate score using formula: (((Thumbs up*2) - Thumbs down) / Total votes + random(0,1))
+        // Calculate raw score using formula: (((Thumbs up*2) - Thumbs down) / Total votes + random(0,1))
         const rankings = Object.values(countryScores).map(country => {
-            let score = 0;
+            let rawScore = 0;
             if (country.totalVotes > 0) {
-                score = ((country.up * 2) - country.down) / country.totalVotes;
+                rawScore = ((country.up * 2) - country.down) / country.totalVotes;
             }
             // Add random tiebreaker between 0 and 1
-            score += Math.random();
+            rawScore += Math.random();
             
             return {
                 ...country,
-                score: score
+                rawScore: rawScore
             };
         });
         
-        // Sort by score descending
-        rankings.sort((a, b) => b.score - a.score);
+        // Sort by rawScore descending
+        rankings.sort((a, b) => b.rawScore - a.rawScore);
+        
+        // Calculate points using formula: (this country's score/sum of all countries' scores) * (24 * number of competing countries)
+        const numCountries = rankings.length;
+        const sumOfScores = rankings.reduce((sum, country) => sum + country.rawScore, 0);
+        
+        rankings.forEach(country => {
+            if (sumOfScores > 0) {
+                country.points = Math.round((country.rawScore / sumOfScores) * (24 * numCountries));
+            } else {
+                country.points = 0;
+            }
+        });
         
         displayScoreboard(rankings);
         
@@ -1337,7 +1357,11 @@ function displayScoreboard(rankings) {
         item.innerHTML = `
             <div class="score-rank ${rankClass}">${rank}</div>
             <div class="score-flag">${flag}</div>
-            <div class="score-user">${escapeHtml(country.countryName)}</div>
+            <div class="score-details">
+                <div class="score-country">${escapeHtml(country.countryName)}</div>
+                <div class="score-song-info">${escapeHtml(country.singer)} - "${escapeHtml(country.songTitle)}"</div>
+            </div>
+            <div class="score-points">${country.points}</div>
             <div class="score-votes">
                 <span>👍 ${country.up}</span>
                 <span>👊 ${country.mid}</span>

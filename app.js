@@ -1265,9 +1265,20 @@ async function loadScoreboard() {
         }
         
         // Aggregate votes by country (via song)
+        // Use allSongs to map songDeets to full song data since include doesn't always fetch all fields
+        const songDataMap = {};
+        if (state.allSongs && state.allSongs.length > 0) {
+            state.allSongs.forEach(s => {
+                songDataMap[s.id] = s;
+            });
+        }
+        
         votes.forEach(vote => {
-            const song = vote.get('songDeets');
-            if (!song) return;
+            const songPointer = vote.get('songDeets');
+            if (!songPointer) return;
+            
+            // Get the full song data from our cached songs if available
+            const song = songDataMap[songPointer.id] || songPointer;
             
             const countryName = song.get('countryName') || song.get('CountryName') || 'Unknown';
             const countryCode = song.get('countryCode') || song.get('CountryCode') || '';

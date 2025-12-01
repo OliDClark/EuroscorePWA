@@ -118,6 +118,13 @@ function showMainScreen() {
 function showPartyScreen(party) {
     state.currentParty = party;
     showScreen(elements.partyScreen);
+    
+    // Reset to voting tab when opening a party
+    switchPartyTab('voting');
+    
+    // Clear selected song
+    state.selectedSong = null;
+    
     updatePartyScreen();
 }
 
@@ -1231,9 +1238,29 @@ async function loadScoreboard() {
         
         const votes = await query.find();
         
-        // Aggregate votes by country (via song)
+        // Initialize scores from all songs loaded in the party
         const countryScores = {};
         
+        // First, add all songs to the scoreboard with 0 votes
+        if (state.allSongs && state.allSongs.length > 0) {
+            state.allSongs.forEach(song => {
+                const countryName = song.get('countryName') || song.get('CountryName') || 'Unknown';
+                const countryCode = song.get('countryCode') || song.get('CountryCode') || '';
+                
+                if (!countryScores[countryName]) {
+                    countryScores[countryName] = {
+                        countryName: countryName,
+                        countryCode: countryCode,
+                        up: 0,
+                        mid: 0,
+                        down: 0,
+                        totalVotes: 0
+                    };
+                }
+            });
+        }
+        
+        // Aggregate votes by country (via song)
         votes.forEach(vote => {
             const song = vote.get('songDeets');
             if (!song) return;

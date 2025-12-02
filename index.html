@@ -95,7 +95,16 @@
                     <h3>Create a New Party</h3>
                     <div class="form-group">
                         <input type="text" id="party-name-input" placeholder="Party Name">
-                        <textarea id="party-description-input" placeholder="Location (optional)" rows="3"></textarea>
+                        <input type="text" id="party-location-input" placeholder="Party Location">
+                        <input type="text" id="party-code-input-create" placeholder="Party Code (6 characters)">
+                        <div class="form-label">Which Competition</div>
+                        <select id="competition-select" class="form-select">
+                            <option value="">Select a Competition...</option>
+                        </select>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="guest-voting-checkbox" checked>
+                            <span>Enable Guest Voting</span>
+                        </label>
                         <button id="create-party-btn" class="btn btn-primary">Create Party</button>
                         <div id="create-error" class="error-message"></div>
                     </div>

@@ -51,7 +51,10 @@ const elements = {
     joinError: document.getElementById('join-error'),
     
     partyNameInput: document.getElementById('party-name-input'),
-    partyDescriptionInput: document.getElementById('party-description-input'),
+    partyLocationInput: document.getElementById('party-location-input'),
+    partyCodeInputCreate: document.getElementById('party-code-input-create'),
+    competitionSelect: document.getElementById('competition-select'),
+    guestVotingCheckbox: document.getElementById('guest-voting-checkbox'),
     createPartyBtn: document.getElementById('create-party-btn'),
     createError: document.getElementById('create-error'),
     
@@ -113,6 +116,7 @@ function showMainScreen() {
     showScreen(elements.mainScreen);
     elements.usernameDisplay.textContent = state.currentUser.getUsername();
     loadUserParties();
+    loadCompetitionsForDropdown();
 }
 
 function showPartyScreen(party) {
@@ -294,6 +298,32 @@ async function handleLogout() {
     }
 }
 
+// Load competitions for the dropdown in Create Party tab
+async function loadCompetitionsForDropdown() {
+    try {
+        const Competitions = Parse.Object.extend('Competitions');
+        const query = new Parse.Query(Competitions);
+        query.descending('year');
+        query.limit(100);
+        
+        const competitions = await query.find();
+        
+        // Populate the dropdown
+        elements.competitionSelect.innerHTML = '<option value="">Select a Competition...</option>';
+        
+        competitions.forEach(comp => {
+            const option = document.createElement('option');
+            option.value = comp.id;
+            const stage = comp.get('stage') || comp.get('Stage') || '';
+            const year = comp.get('year') || comp.get('Year') || '';
+            option.textContent = `${stage} ${year}`.trim();
+            elements.competitionSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading competitions:', error);
+    }
+}
+
 // Party management
 async function loadUserParties() {
     elements.hostedPartiesList.innerHTML = '<p class="loading">Loading hosted parties...</p>';
@@ -387,7 +417,10 @@ function createPartyCard(party) {
 
 async function handleCreateParty() {
     const name = elements.partyNameInput.value.trim();
-    const location = elements.partyDescriptionInput.value.trim();
+    const location = elements.partyLocationInput.value.trim();
+    const partyCode = elements.partyCodeInputCreate.value.trim().toUpperCase();
+    const competitionId = elements.competitionSelect.value;
+    const guestVoting = elements.guestVotingCheckbox.checked;
     
     elements.createError.textContent = '';
     
@@ -396,21 +429,43 @@ async function handleCreateParty() {
         return;
     }
     
+    if (!partyCode || partyCode.length !== 6) {
+        elements.createError.textContent = 'Please enter a 6-character party code';
+        return;
+    }
+    
+    if (!competitionId) {
+        elements.createError.textContent = 'Please select a competition';
+        return;
+    }
+    
     elements.createPartyBtn.disabled = true;
     elements.createPartyBtn.textContent = 'Creating...';
     
     try {
+        // Check if party code already exists
         const Parties = Parse.Object.extend('Parties');
-        const party = new Parties();
+        const codeQuery = new Parse.Query(Parties);
+        codeQuery.equalTo('Password', partyCode);
+        const existingParty = await codeQuery.first();
         
-        // Generate unique party password with verification
-        const password = await generateUniquePartyCode();
+        if (existingParty) {
+            elements.createError.textContent = 'Party code already exists. Please choose another.';
+            return;
+        }
+        
+        const party = new Parties();
         
         party.set('Name', name);
         party.set('Location', location || 'Online');
-        party.set('Password', password);
+        party.set('Password', partyCode);
         party.set('Host', state.currentUser);
-        party.set('GuestVoting', true);
+        party.set('GuestVoting', guestVoting);
+        
+        // Set the competition pointer
+        const Competitions = Parse.Object.extend('Competitions');
+        const competition = Competitions.createWithoutData(competitionId);
+        party.set('whichComp', competition);
         
         await party.save();
         
@@ -424,10 +479,13 @@ async function handleCreateParty() {
         
         // Clear form
         elements.partyNameInput.value = '';
-        elements.partyDescriptionInput.value = '';
+        elements.partyLocationInput.value = '';
+        elements.partyCodeInputCreate.value = '';
+        elements.competitionSelect.value = '';
+        elements.guestVotingCheckbox.checked = true;
         
         // Show success and switch to parties tab
-        switchTab('parties');
+        switchTab('my-parties');
         
         // Show the new party
         showPartyScreen(party);

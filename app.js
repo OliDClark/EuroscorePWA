@@ -429,8 +429,8 @@ async function handleCreateParty() {
         return;
     }
     
-    if (!partyCode || partyCode.length !== 6) {
-        elements.createError.textContent = 'Please enter a 6-character party code';
+    if (!partyCode) {
+        elements.createError.textContent = 'Please enter a party code';
         return;
     }
     
@@ -443,14 +443,14 @@ async function handleCreateParty() {
     elements.createPartyBtn.textContent = 'Creating...';
     
     try {
-        // Check if party code already exists
+        // Check if party name already exists
         const Parties = Parse.Object.extend('Parties');
-        const codeQuery = new Parse.Query(Parties);
-        codeQuery.equalTo('Password', partyCode);
-        const existingParty = await codeQuery.first();
+        const nameQuery = new Parse.Query(Parties);
+        nameQuery.equalTo('Name', name);
+        const existingParty = await nameQuery.first();
         
         if (existingParty) {
-            elements.createError.textContent = 'Party code already exists. Please choose another.';
+            elements.createError.textContent = 'Party name already exists. Please choose another.';
             return;
         }
         

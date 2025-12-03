@@ -1296,6 +1296,17 @@ async function loadScoreboard() {
         
         const votes = await query.find();
         
+        console.log('=== SCOREBOARD: Thumbs votes loaded from backend ===');
+        console.log(`Total votes found: ${votes.length}`);
+        console.log('Raw votes data:', votes.map(v => ({
+            id: v.id,
+            thumbsUp: v.get('thumbsUp'),
+            thumbsMid: v.get('thumbsMid'),
+            thumbsDown: v.get('thumbsDown'),
+            songId: v.get('songDeets')?.id,
+            userId: v.get('whoseVote')?.id
+        })));
+        
         // Initialize scores from all songs loaded in the party
         const countryScores = {};
         
@@ -1364,6 +1375,9 @@ async function loadScoreboard() {
             countryScores[countryName].down += down;
             countryScores[countryName].totalVotes += up + mid + down;
         });
+        
+        console.log('=== SCOREBOARD: Aggregated country scores ===');
+        console.log('Country scores:', countryScores);
         
         // Calculate raw score using formula: (((Thumbs up*2) - Thumbs down) / Total votes + random(0,1))
         const rankings = Object.values(countryScores).map(country => {

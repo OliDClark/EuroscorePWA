@@ -709,6 +709,7 @@ async function loadUserSongVotes(songs) {
         query.equalTo('whoseVote', state.currentUser);
         query.equalTo('whichParty', partyPointer);
         query.include('songDeets');
+        query.limit(10000); // Set high limit for consistency
         
         const votes = await query.find();
         
@@ -745,6 +746,7 @@ async function loadAllSongVotes(songs) {
         const query = new Parse.Query(Thumbs);
         query.equalTo('whichParty', partyPointer);
         query.include('songDeets');
+        query.limit(10000); // Set high limit to capture all votes for large parties
         
         const votes = await query.find();
         
@@ -1293,6 +1295,7 @@ async function loadScoreboard() {
         const query = new Parse.Query(Thumbs);
         query.equalTo('whichParty', partyPointer);
         query.include('songDeets');
+        query.limit(10000); // Set high limit to capture all votes for large parties
         
         const votes = await query.find();
         

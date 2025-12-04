@@ -84,8 +84,53 @@ const elements = {
     modeStatus: document.getElementById('mode-status')
 };
 
+// Function to apply manifest display mode on page load
+function applyManifestDisplayMode() {
+    try {
+        const savedMode = localStorage.getItem('displayMode') || 'standalone';
+        
+        // Create a dynamic manifest with the saved display mode
+        const manifest = {
+            "name": "Euroscore",
+            "short_name": "Euroscore",
+            "description": "Vote and celebrate with friends!",
+            "start_url": "/",
+            "display": savedMode,
+            "background_color": "#ffffff",
+            "theme_color": "#4285f4",
+            "icons": [
+                {
+                    "src": "icon-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                },
+                {
+                    "src": "icon-512.png",
+                    "sizes": "512x512",
+                    "type": "image/png"
+                }
+            ]
+        };
+        
+        // Create a new manifest blob and URL
+        const manifestBlob = new Blob([JSON.stringify(manifest, null, 2)], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(manifestBlob);
+        
+        // Update the manifest link in the document
+        const manifestLink = document.querySelector('link[rel="manifest"]');
+        if (manifestLink) {
+            manifestLink.href = manifestURL;
+        }
+    } catch (error) {
+        console.error('Error applying manifest display mode:', error);
+    }
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
+    // Apply saved display mode on page load
+    applyManifestDisplayMode();
+    
     initializeApp();
     setupEventListeners();
     
@@ -1572,10 +1617,32 @@ async function applyDisplayMode() {
     const selectedMode = document.querySelector('input[name="display-mode"]:checked').value;
     
     try {
-        // Update the manifest
-        const response = await fetch('/manifest.json');
-        const manifest = await response.json();
-        manifest.display = selectedMode;
+        // Save to localStorage
+        localStorage.setItem('displayMode', selectedMode);
+        state.displayMode = selectedMode;
+        
+        // Create a dynamic manifest with the selected display mode
+        const manifest = {
+            "name": "Euroscore",
+            "short_name": "Euroscore",
+            "description": "Vote and celebrate with friends!",
+            "start_url": "/",
+            "display": selectedMode,
+            "background_color": "#ffffff",
+            "theme_color": "#4285f4",
+            "icons": [
+                {
+                    "src": "icon-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                },
+                {
+                    "src": "icon-512.png",
+                    "sizes": "512x512",
+                    "type": "image/png"
+                }
+            ]
+        };
         
         // Create a new manifest blob and URL
         const manifestBlob = new Blob([JSON.stringify(manifest, null, 2)], {type: 'application/json'});
@@ -1583,11 +1650,9 @@ async function applyDisplayMode() {
         
         // Update the manifest link in the document
         const manifestLink = document.querySelector('link[rel="manifest"]');
-        manifestLink.href = manifestURL;
-        
-        // Save to localStorage
-        localStorage.setItem('displayMode', selectedMode);
-        state.displayMode = selectedMode;
+        if (manifestLink) {
+            manifestLink.href = manifestURL;
+        }
         
         alert('Display mode updated to ' + selectedMode + '. Please reload the app for changes to take effect.');
         

@@ -20,7 +20,9 @@ const state = {
     currentUserVote: null,
     selectedSong: null,
     songVotesMap: {},
-    allSongs: []
+    allSongs: [],
+    appMode: localStorage.getItem('appMode') || 'score-entry',
+    displayMode: localStorage.getItem('displayMode') || 'standalone'
 };
 
 // DOM elements cache
@@ -29,6 +31,7 @@ const elements = {
     signupScreen: document.getElementById('signup-screen'),
     mainScreen: document.getElementById('main-screen'),
     partyScreen: document.getElementById('party-screen'),
+    settingsScreen: document.getElementById('settings-screen'),
     
     loginUsername: document.getElementById('login-username'),
     loginPassword: document.getElementById('login-password'),
@@ -45,6 +48,8 @@ const elements = {
     showLoginBtn: document.getElementById('show-login-btn'),
     logoutBtn: document.getElementById('logout-btn'),
     usernameDisplay: document.getElementById('username-display'),
+    settingsBtn: document.getElementById('settings-btn'),
+    backFromSettingsBtn: document.getElementById('back-from-settings-btn'),
     
     partyCodeInput: document.getElementById('party-code-input'),
     joinPartyBtn: document.getElementById('join-party-btn'),
@@ -72,7 +77,11 @@ const elements = {
     joinedSubtab: document.getElementById('joined-subtab'),
     songsSection: document.getElementById('songs-section'),
     songsList: document.getElementById('songs-list'),
-    competitionInfo: document.getElementById('competition-info')
+    competitionInfo: document.getElementById('competition-info'),
+    
+    applyDisplayBtn: document.getElementById('apply-display-btn'),
+    applyModeBtn: document.getElementById('apply-mode-btn'),
+    modeStatus: document.getElementById('mode-status')
 };
 
 // Initialize app
@@ -123,13 +132,23 @@ function showPartyScreen(party) {
     state.currentParty = party;
     showScreen(elements.partyScreen);
     
-    // Reset to voting tab when opening a party
-    switchPartyTab('voting');
-    
     // Clear selected song
     state.selectedSong = null;
     
+    // Switch to appropriate tab based on app mode
+    if (state.appMode === 'scoreboard') {
+        // In Scoreboard mode, default to scoreboard tab
+        switchPartyTab('scoreboard');
+    } else {
+        // In Score Entry mode, default to voting tab
+        switchPartyTab('voting');
+    }
+    
     updatePartyScreen();
+}
+
+function showSettingsScreen() {
+    showScreen(elements.settingsScreen);
 }
 
 // Event listeners
@@ -180,6 +199,15 @@ function setupEventListeners() {
     document.querySelectorAll('.vote-btn').forEach(btn => {
         btn.addEventListener('click', () => handleVote(btn.dataset.vote));
     });
+    
+    // Settings
+    elements.settingsBtn.addEventListener('click', showSettingsScreen);
+    elements.backFromSettingsBtn.addEventListener('click', showMainScreen);
+    elements.applyDisplayBtn.addEventListener('click', applyDisplayMode);
+    elements.applyModeBtn.addEventListener('click', applyAppMode);
+    
+    // Initialize settings radio buttons
+    initializeSettings();
 }
 
 function switchTab(tab) {
@@ -1520,4 +1548,85 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Settings functions
+function initializeSettings() {
+    // Set the radio buttons based on saved settings
+    const displayRadios = document.getElementsByName('display-mode');
+    displayRadios.forEach(radio => {
+        if (radio.value === state.displayMode) {
+            radio.checked = true;
+        }
+    });
+    
+    const modeRadios = document.getElementsByName('app-mode');
+    modeRadios.forEach(radio => {
+        if (radio.value === state.appMode) {
+            radio.checked = true;
+        }
+    });
+}
+
+async function applyDisplayMode() {
+    const selectedMode = document.querySelector('input[name="display-mode"]:checked').value;
+    
+    try {
+        // Update the manifest
+        const response = await fetch('/manifest.json');
+        const manifest = await response.json();
+        manifest.display = selectedMode;
+        
+        // Create a new manifest blob and URL
+        const manifestBlob = new Blob([JSON.stringify(manifest, null, 2)], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(manifestBlob);
+        
+        // Update the manifest link in the document
+        const manifestLink = document.querySelector('link[rel="manifest"]');
+        manifestLink.href = manifestURL;
+        
+        // Save to localStorage
+        localStorage.setItem('displayMode', selectedMode);
+        state.displayMode = selectedMode;
+        
+        alert('Display mode updated to ' + selectedMode + '. Please reload the app for changes to take effect.');
+        
+        // Reload the page after a short delay
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+    } catch (error) {
+        console.error('Error updating display mode:', error);
+        alert('Error updating display mode. Please try again.');
+    }
+}
+
+function applyAppMode() {
+    const selectedMode = document.querySelector('input[name="app-mode"]:checked').value;
+    
+    // Save to localStorage
+    localStorage.setItem('appMode', selectedMode);
+    state.appMode = selectedMode;
+    
+    // Show success message
+    elements.modeStatus.textContent = `App mode changed to: ${selectedMode === 'score-entry' ? 'Score Entry Mode' : 'Scoreboard Mode'}`;
+    elements.modeStatus.classList.remove('hidden');
+    
+    // Apply mode changes to UI
+    applyAppModeToUI();
+    
+    // Hide message after 3 seconds
+    setTimeout(() => {
+        elements.modeStatus.classList.add('hidden');
+    }, 3000);
+}
+
+function applyAppModeToUI() {
+    if (state.appMode === 'scoreboard') {
+        // In Scoreboard mode, when entering a party, automatically go to scoreboard tab
+        console.log('App is now in Scoreboard Mode');
+    } else {
+        // In Score Entry mode, normal behavior
+        console.log('App is now in Score Entry Mode');
+    }
 }

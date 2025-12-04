@@ -47,6 +47,7 @@
                 <h2>🎉 Euroscore</h2>
                 <div class="nav-actions">
                     <span id="username-display"></span>
+                    <button id="settings-btn" class="btn btn-small">⚙️ Settings</button>
                     <button id="logout-btn" class="btn btn-small">Logout</button>
                 </div>
             </nav>
@@ -169,6 +170,56 @@
                             <p class="loading">Loading scores...</p>
                         </div>
                         <button id="refresh-scores-btn" class="btn btn-secondary">Refresh Rankings</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div id="settings-screen" class="screen hidden">
+            <nav class="navbar">
+                <button id="back-from-settings-btn" class="btn btn-small">← Back</button>
+                <h2>Settings</h2>
+            </nav>
+
+            <div class="container">
+                <div class="settings-section">
+                    <h3>Display Settings</h3>
+                    <div class="form-group">
+                        <label class="setting-label">Display Mode</label>
+                        <p class="setting-description">Choose how the app appears when opened from home screen</p>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="display-mode" value="standalone" checked>
+                                <span>Standalone (Shows in separate window)</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="display-mode" value="fullscreen">
+                                <span>Fullscreen (Hides browser UI)</span>
+                            </label>
+                        </div>
+                        <button id="apply-display-btn" class="btn btn-secondary">Apply Display Mode</button>
+                        <p class="info-message">Note: Changing display mode requires reloading the app</p>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>App Mode</h3>
+                    <div class="form-group">
+                        <label class="setting-label">Select Mode</label>
+                        <p class="setting-description">Choose the primary function of the app</p>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="app-mode" value="score-entry" checked>
+                                <span>Score Entry Mode (Vote and enter scores)</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="app-mode" value="scoreboard">
+                                <span>Scoreboard Mode (View scoreboard only)</span>
+                            </label>
+                        </div>
+                        <button id="apply-mode-btn" class="btn btn-secondary">Apply Mode</button>
+                        <p id="mode-status" class="success-message hidden"></p>
                     </div>
                 </div>
             </div>

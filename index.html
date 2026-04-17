@@ -57,6 +57,7 @@
                     <button class="tab-btn active" data-tab="my-parties">My Parties</button>
                     <button class="tab-btn" data-tab="join">Join Party</button>
                     <button class="tab-btn" data-tab="create">Create Party</button>
+                    <button class="tab-btn" data-tab="scoreboard-main">Scoreboard</button>
                 </div>
 
                 <!-- My Parties Tab with Sub-tabs -->
@@ -108,6 +109,42 @@
                         </label>
                         <button id="create-party-btn" class="btn btn-primary">Create Party</button>
                         <div id="create-error" class="error-message"></div>
+                    </div>
+                </div>
+
+                <!-- Main Scoreboard Tab -->
+                <div id="scoreboard-main-tab" class="tab-content hidden">
+                    <div class="scoreboard">
+                        <h3>🏆 Eurovision Scoreboard</h3>
+                        <div class="form-group scoreboard-selector-group">
+                            <div class="form-label">Scoreboard source</div>
+                            <select id="main-scoreboard-source-select" class="form-select">
+                                <option value="">Select source...</option>
+                                <option value="party">One of your parties</option>
+                                <option value="competition">A competition</option>
+                            </select>
+
+                            <div id="main-scoreboard-party-selector-wrap" class="hidden">
+                                <div class="form-label">Select party</div>
+                                <select id="main-scoreboard-party-select" class="form-select">
+                                    <option value="">Select a party...</option>
+                                </select>
+                            </div>
+
+                            <div id="main-scoreboard-competition-selector-wrap" class="hidden">
+                                <div class="form-label">Select competition</div>
+                                <select id="main-scoreboard-competition-select" class="form-select">
+                                    <option value="">Select a competition...</option>
+                                </select>
+                            </div>
+
+                            <button id="main-refresh-scores-btn" class="btn btn-secondary">Show Scoreboard</button>
+                        </div>
+
+                        <p id="main-scoreboard-context" class="competition-info"></p>
+                        <div id="main-scoreboard-content" class="scoreboard-content">
+                            <p class="loading">Choose a source to view the scoreboard.</p>
+                        </div>
                     </div>
                 </div>
             </div>

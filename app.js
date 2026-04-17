@@ -10,6 +10,10 @@ Parse.initialize(PARSE_CONFIG.appId, PARSE_CONFIG.javascriptKey);
 Parse.serverURL = PARSE_CONFIG.serverURL;
 console.log('Parse Config:', PARSE_CONFIG);
 
+const SCOREBOARD_QUERY_LIMIT = 10000;
+const UPVOTE_WEIGHT = 2;
+const EUROVISION_POINTS_MULTIPLIER = 116;
+
 // State management
 const state = {
     currentUser: null,
@@ -21,6 +25,7 @@ const state = {
     selectedSong: null,
     songVotesMap: {},
     allSongs: [],
+    competitions: [],
     appMode: localStorage.getItem('appMode') || 'score-entry',
     displayMode: localStorage.getItem('displayMode') || 'standalone'
 };
@@ -78,6 +83,14 @@ const elements = {
     songsSection: document.getElementById('songs-section'),
     songsList: document.getElementById('songs-list'),
     competitionInfo: document.getElementById('competition-info'),
+    mainScoreboardSourceSelect: document.getElementById('main-scoreboard-source-select'),
+    mainScoreboardPartySelectorWrap: document.getElementById('main-scoreboard-party-selector-wrap'),
+    mainScoreboardCompetitionSelectorWrap: document.getElementById('main-scoreboard-competition-selector-wrap'),
+    mainScoreboardPartySelect: document.getElementById('main-scoreboard-party-select'),
+    mainScoreboardCompetitionSelect: document.getElementById('main-scoreboard-competition-select'),
+    mainRefreshScoresBtn: document.getElementById('main-refresh-scores-btn'),
+    mainScoreboardContent: document.getElementById('main-scoreboard-content'),
+    mainScoreboardContext: document.getElementById('main-scoreboard-context'),
     
     applyDisplayBtn: document.getElementById('apply-display-btn'),
     applyModeBtn: document.getElementById('apply-mode-btn'),
@@ -239,6 +252,10 @@ function setupEventListeners() {
     elements.createPartyBtn.addEventListener('click', handleCreateParty);
     elements.backToMainBtn.addEventListener('click', showMainScreen);
     elements.refreshScoresBtn.addEventListener('click', loadScoreboard);
+    elements.mainRefreshScoresBtn.addEventListener('click', loadMainScoreboard);
+    elements.mainScoreboardSourceSelect.addEventListener('change', handleMainScoreboardSourceChange);
+    elements.mainScoreboardPartySelect.addEventListener('change', loadMainScoreboard);
+    elements.mainScoreboardCompetitionSelect.addEventListener('change', loadMainScoreboard);
     
     // Voting
     document.querySelectorAll('.vote-btn').forEach(btn => {
@@ -266,6 +283,10 @@ function switchTab(tab) {
         content.classList.add('hidden');
     });
     document.getElementById(`${tab}-tab`).classList.remove('hidden');
+
+    if (tab === 'scoreboard-main') {
+        prepareMainScoreboardTab();
+    }
 }
 
 function switchSubTab(subtab) {
@@ -380,6 +401,7 @@ async function loadCompetitionsForDropdown() {
         query.limit(100);
         
         const competitions = await query.find();
+        state.competitions = competitions;
         
         // Populate the dropdown
         elements.competitionSelect.innerHTML = '<option value="">Select a Competition...</option>';
@@ -392,6 +414,8 @@ async function loadCompetitionsForDropdown() {
             option.textContent = `${stage} ${year}`.trim();
             elements.competitionSelect.appendChild(option);
         });
+
+        populateMainScoreboardCompetitionOptions();
     } catch (error) {
         console.error('Error loading competitions:', error);
     }
@@ -435,6 +459,7 @@ async function loadUserParties() {
         state.joinedParties = filteredJoinedParties;
         
         displayParties();
+        populateMainScoreboardPartyOptions();
     } catch (error) {
         console.error('Error loading parties:', error);
         elements.hostedPartiesList.innerHTML = '<p class="error-message">Failed to load hosted parties</p>';
@@ -462,6 +487,69 @@ function displayParties() {
             elements.joinedPartiesList.appendChild(createPartyCard(party));
         });
     }
+}
+
+function getAllUserParties() {
+    const byId = new Map();
+    [...state.hostedParties, ...state.joinedParties].forEach(party => {
+        if (party && party.id) byId.set(party.id, party);
+    });
+    return Array.from(byId.values());
+}
+
+function populateMainScoreboardPartyOptions() {
+    const parties = getAllUserParties();
+    const currentValue = elements.mainScoreboardPartySelect.value;
+
+    elements.mainScoreboardPartySelect.innerHTML = '<option value="">Select a party...</option>';
+    parties.forEach(party => {
+        const option = document.createElement('option');
+        option.value = party.id;
+        option.textContent = party.get('Name') || 'Unnamed Party';
+        elements.mainScoreboardPartySelect.appendChild(option);
+    });
+
+    if (currentValue && parties.some(p => p.id === currentValue)) {
+        elements.mainScoreboardPartySelect.value = currentValue;
+    }
+}
+
+function populateMainScoreboardCompetitionOptions() {
+    const currentValue = elements.mainScoreboardCompetitionSelect.value;
+    elements.mainScoreboardCompetitionSelect.innerHTML = '<option value="">Select a competition...</option>';
+
+    state.competitions.forEach(comp => {
+        const option = document.createElement('option');
+        option.value = comp.id;
+        const stage = comp.get('stage') || comp.get('Stage') || '';
+        const year = comp.get('year') || comp.get('Year') || '';
+        option.textContent = `${stage} ${year}`.trim() || 'Unnamed Competition';
+        elements.mainScoreboardCompetitionSelect.appendChild(option);
+    });
+
+    if (currentValue && state.competitions.some(c => c.id === currentValue)) {
+        elements.mainScoreboardCompetitionSelect.value = currentValue;
+    }
+}
+
+function prepareMainScoreboardTab() {
+    populateMainScoreboardPartyOptions();
+    populateMainScoreboardCompetitionOptions();
+    handleMainScoreboardSourceChange();
+}
+
+function handleMainScoreboardSourceChange() {
+    const source = elements.mainScoreboardSourceSelect.value;
+    elements.mainScoreboardPartySelectorWrap.classList.toggle('hidden', source !== 'party');
+    elements.mainScoreboardCompetitionSelectorWrap.classList.toggle('hidden', source !== 'competition');
+
+    if (!source) {
+        elements.mainScoreboardContext.style.display = 'none';
+        elements.mainScoreboardContent.innerHTML = '<p class="loading">Choose a source to view the scoreboard.</p>';
+        return;
+    }
+
+    loadMainScoreboard();
 }
 
 function createPartyCard(party) {
@@ -694,63 +782,7 @@ async function loadPartySongs() {
     elements.songsList.innerHTML = '<p class="loading">Loading songs...</p>';
     
     try {
-        // Fetch the competition to get the whereObject
-        await competition.fetch();
-        
-        const whereObject = competition.get('whereObject');
-        const stage = competition.get('stage') || competition.get('Stage');
-        
-        if (!whereObject) {
-            elements.songsList.innerHTML = '<p class="error-message">No song filter found for this competition</p>';
-            return;
-        }
-        
-        // Parse the whereObject if it's a string
-        let queryParams = whereObject;
-        if (typeof whereObject === 'string') {
-            queryParams = JSON.parse(whereObject);
-        }
-        
-        // Query the Songs class using the whereObject
-        const Songs = Parse.Object.extend('Songs');
-        const query = new Parse.Query(Songs);
-        
-        // Apply each constraint from whereObject
-        for (const [key, value] of Object.entries(queryParams)) {
-            if (typeof value === 'object' && value !== null) {
-                // Handle special Parse query operators
-                if (value.__type === 'Pointer') {
-                    // Handle pointer values
-                    const pointerObj = Parse.Object.extend(value.className).createWithoutData(value.objectId);
-                    query.equalTo(key, pointerObj);
-                } else {
-                    // Handle other object constraints like $gt, $lt, etc.
-                    for (const [op, opValue] of Object.entries(value)) {
-                        switch (op) {
-                            case '$gt': query.greaterThan(key, opValue); break;
-                            case '$gte': query.greaterThanOrEqualTo(key, opValue); break;
-                            case '$lt': query.lessThan(key, opValue); break;
-                            case '$lte': query.lessThanOrEqualTo(key, opValue); break;
-                            case '$ne': query.notEqualTo(key, opValue); break;
-                            case '$in': query.containedIn(key, opValue); break;
-                            default: query.equalTo(key, value); break;
-                        }
-                    }
-                }
-            } else {
-                query.equalTo(key, value);
-            }
-        }
-        
-        // Determine sort order based on stage
-        const stageLower = (stage || '').toLowerCase();
-        if (stageLower.includes('final') && !stageLower.includes('semi')) {
-            query.ascending('finalOrder');
-        } else {
-            query.ascending('semiOrder');
-        }
-        
-        const songs = await query.find();
+        const songs = await fetchSongsForCompetition(competition);
         
         if (songs.length === 0) {
             elements.songsList.innerHTML = '<p class="loading">No songs found for this competition</p>';
@@ -764,6 +796,59 @@ async function loadPartySongs() {
         console.error('Error loading songs:', error);
         elements.songsList.innerHTML = '<p class="error-message">Failed to load songs: ' + error.message + '</p>';
     }
+}
+
+async function fetchSongsForCompetition(competition) {
+    if (!competition) return [];
+
+    await competition.fetch();
+
+    const whereObject = competition.get('whereObject');
+    const stage = competition.get('stage') || competition.get('Stage');
+
+    if (!whereObject) {
+        return [];
+    }
+
+    let queryParams = whereObject;
+    if (typeof whereObject === 'string') {
+        queryParams = JSON.parse(whereObject);
+    }
+
+    const Songs = Parse.Object.extend('Songs');
+    const query = new Parse.Query(Songs);
+
+    for (const [key, value] of Object.entries(queryParams)) {
+        if (typeof value === 'object' && value !== null) {
+            if (value.__type === 'Pointer') {
+                const pointerObj = Parse.Object.extend(value.className).createWithoutData(value.objectId);
+                query.equalTo(key, pointerObj);
+            } else {
+                for (const [op, opValue] of Object.entries(value)) {
+                    switch (op) {
+                        case '$gt': query.greaterThan(key, opValue); break;
+                        case '$gte': query.greaterThanOrEqualTo(key, opValue); break;
+                        case '$lt': query.lessThan(key, opValue); break;
+                        case '$lte': query.lessThanOrEqualTo(key, opValue); break;
+                        case '$ne': query.notEqualTo(key, opValue); break;
+                        case '$in': query.containedIn(key, opValue); break;
+                        default: query.equalTo(key, value); break;
+                    }
+                }
+            }
+        } else {
+            query.equalTo(key, value);
+        }
+    }
+
+    const stageLower = (stage || '').toLowerCase();
+    if (stageLower.includes('final') && !stageLower.includes('semi')) {
+        query.ascending('finalOrder');
+    } else {
+        query.ascending('semiOrder');
+    }
+
+    return query.find();
 }
 
 // Load user's votes for songs in the current party
@@ -1357,6 +1442,207 @@ async function refreshSongVoteDisplay(songId, voteValue) {
     }
 }
 
+async function loadMainScoreboard() {
+    const sourceType = elements.mainScoreboardSourceSelect.value;
+    elements.mainScoreboardContent.innerHTML = '<p class="loading">Loading rankings...</p>';
+    elements.mainScoreboardContext.style.display = 'none';
+
+    if (!sourceType) {
+        elements.mainScoreboardContent.innerHTML = '<p class="loading">Choose a source to view the scoreboard.</p>';
+        return;
+    }
+
+    try {
+        let songs = [];
+        let votes = [];
+        let contextLabel = '';
+
+        if (sourceType === 'party') {
+            const partyId = elements.mainScoreboardPartySelect.value;
+            if (!partyId) {
+                elements.mainScoreboardContent.innerHTML = '<p class="loading">Select a party to continue.</p>';
+                return;
+            }
+
+            const party = getAllUserParties().find(p => p.id === partyId);
+            if (!party) {
+                elements.mainScoreboardContent.innerHTML = '<p class="error-message">Unable to find selected party.</p>';
+                return;
+            }
+
+            const competition = party.get('whichComp');
+            if (!competition) {
+                elements.mainScoreboardContent.innerHTML = '<p class="loading">This party has no linked competition.</p>';
+                return;
+            }
+
+            songs = await fetchSongsForCompetition(competition);
+            votes = await fetchScoreboardVotes({ partyId });
+            contextLabel = `Party: ${party.get('Name') || 'Unnamed Party'} • ${getCompetitionLabel(competition)}`;
+        } else if (sourceType === 'competition') {
+            const competitionId = elements.mainScoreboardCompetitionSelect.value;
+            if (!competitionId) {
+                elements.mainScoreboardContent.innerHTML = '<p class="loading">Select a competition to continue.</p>';
+                return;
+            }
+
+            let competition = state.competitions.find(comp => comp.id === competitionId);
+            if (!competition) {
+                const Competitions = Parse.Object.extend('Competitions');
+                const query = new Parse.Query(Competitions);
+                competition = await query.get(competitionId);
+            }
+
+            songs = await fetchSongsForCompetition(competition);
+            votes = await fetchScoreboardVotes({ competitionId });
+            contextLabel = `Competition: ${getCompetitionLabel(competition)}`;
+        }
+
+        const rankings = buildCountryRankings(votes, songs);
+        renderMainEurovisionScoreboard(rankings);
+
+        elements.mainScoreboardContext.textContent = contextLabel;
+        elements.mainScoreboardContext.style.display = contextLabel ? 'block' : 'none';
+    } catch (error) {
+        console.error('Error loading main scoreboard:', error);
+        elements.mainScoreboardContent.innerHTML = '<p class="error-message">Failed to load scoreboard</p>';
+    }
+}
+
+function getCompetitionLabel(competition) {
+    if (!competition) return 'Unknown competition';
+    const stage = competition.get('stage') || competition.get('Stage') || '';
+    const year = competition.get('year') || competition.get('Year') || '';
+    return `${stage} ${year}`.trim() || 'Unnamed competition';
+}
+
+async function fetchScoreboardVotes({ partyId, competitionId }) {
+    const Thumbs = Parse.Object.extend('Thumbs');
+    const query = new Parse.Query(Thumbs);
+    query.include('songDeets');
+    query.limit(SCOREBOARD_QUERY_LIMIT);
+
+    if (partyId) {
+        const Parties = Parse.Object.extend('Parties');
+        query.equalTo('whichParty', Parties.createWithoutData(partyId));
+    } else if (competitionId) {
+        const Competitions = Parse.Object.extend('Competitions');
+        query.equalTo('whichComp', Competitions.createWithoutData(competitionId));
+    }
+
+    return query.find();
+}
+
+function buildCountryRankings(votes, songs) {
+    const countryScores = {};
+    const songDataMap = {};
+
+    songs.forEach(song => {
+        songDataMap[song.id] = song;
+        const countryName = song.get('countryName') || song.get('CountryName') || 'Unknown';
+        if (!countryScores[countryName]) {
+            countryScores[countryName] = {
+                countryName,
+                countryCode: song.get('countryCode') || song.get('CountryCode') || '',
+                singer: song.get('singer') || song.get('Singer') || '',
+                songTitle: song.get('song') || song.get('Song') || '',
+                up: 0,
+                mid: 0,
+                down: 0,
+                totalVotes: 0
+            };
+        }
+    });
+
+    votes.forEach(vote => {
+        const songPointer = vote.get('songDeets');
+        if (!songPointer) return;
+        const song = songDataMap[songPointer.id] || songPointer;
+        const countryName = song.get('countryName') || song.get('CountryName') || 'Unknown';
+        const up = vote.get('thumbsUp') || 0;
+        const mid = vote.get('thumbsMid') || 0;
+        const down = vote.get('thumbsDown') || 0;
+
+        if (!countryScores[countryName]) {
+            countryScores[countryName] = {
+                countryName,
+                countryCode: song.get('countryCode') || song.get('CountryCode') || '',
+                singer: song.get('singer') || song.get('Singer') || '',
+                songTitle: song.get('song') || song.get('Song') || '',
+                up: 0,
+                mid: 0,
+                down: 0,
+                totalVotes: 0
+            };
+        }
+
+        countryScores[countryName].up += up;
+        countryScores[countryName].mid += mid;
+        countryScores[countryName].down += down;
+        countryScores[countryName].totalVotes += up + mid + down;
+    });
+
+    const rankings = Object.values(countryScores).map(country => ({
+        ...country,
+        rawScore: (country.totalVotes > 0 ? ((country.up * UPVOTE_WEIGHT) - country.down) / country.totalVotes : 0) + Math.random()
+    }));
+
+    if (rankings.length === 0) return [];
+
+    const minScore = Math.min(...rankings.map(c => c.rawScore));
+    if (minScore < 0) {
+        const offset = Math.abs(minScore);
+        rankings.forEach(country => {
+            country.rawScore += offset;
+        });
+    }
+
+    rankings.sort((a, b) => b.rawScore - a.rawScore);
+
+    const numCountries = rankings.length;
+    const sumOfScores = rankings.reduce((sum, country) => sum + country.rawScore, 0);
+    rankings.forEach(country => {
+        country.points = sumOfScores > 0
+            ? Math.round((country.rawScore / sumOfScores) * (EUROVISION_POINTS_MULTIPLIER * numCountries))
+            : 0;
+    });
+
+    return rankings;
+}
+
+function renderMainEurovisionScoreboard(rankings) {
+    if (!rankings || rankings.length === 0) {
+        elements.mainScoreboardContent.innerHTML = '<p class="loading">No song votes found for this selection.</p>';
+        return;
+    }
+
+    const midpoint = Math.ceil(rankings.length / 2);
+    const left = rankings.slice(0, midpoint);
+    const right = rankings.slice(midpoint);
+
+    const renderRows = (rows, offset) => rows.map((country, index) => {
+        const rank = offset + index + 1;
+        const flag = country.countryCode ? getCountryFlag(country.countryCode) : '🏳️';
+        return `
+            <div class="eurovision-score-row">
+                <div class="eurovision-score-country">
+                    <span class="eurovision-score-rank">${rank}</span>
+                    <span class="eurovision-score-flag">${flag}</span>
+                    <span class="eurovision-score-name">${escapeHtml(country.countryName)}</span>
+                </div>
+                <div class="eurovision-score-points">${country.points}</div>
+            </div>
+        `;
+    }).join('');
+
+    elements.mainScoreboardContent.innerHTML = `
+        <div class="eurovision-scoreboard-grid">
+            <div class="eurovision-scoreboard-column">${renderRows(left, 0)}</div>
+            <div class="eurovision-scoreboard-column">${renderRows(right, midpoint)}</div>
+        </div>
+    `;
+}
+
 async function loadScoreboard() {
     elements.scoreboardContent.innerHTML = '<p class="loading">Loading rankings...</p>';
     
@@ -1368,7 +1654,7 @@ async function loadScoreboard() {
         const query = new Parse.Query(Thumbs);
         query.equalTo('whichParty', partyPointer);
         query.include('songDeets');
-        query.limit(10000); // Set high limit to capture all votes for large parties
+        query.limit(SCOREBOARD_QUERY_LIMIT); // Set high limit to capture all votes for large parties
         
         const votes = await query.find();
         
@@ -1459,7 +1745,7 @@ async function loadScoreboard() {
         const rankings = Object.values(countryScores).map(country => {
             let rawScore = 0;
             if (country.totalVotes > 0) {
-                rawScore = ((country.up * 2) - country.down) / country.totalVotes;
+                rawScore = ((country.up * UPVOTE_WEIGHT) - country.down) / country.totalVotes;
             }
             // Add random tiebreaker between 0 and 1
             rawScore += Math.random();
@@ -1488,7 +1774,7 @@ async function loadScoreboard() {
         
         rankings.forEach(country => {
             if (sumOfScores > 0) {
-                country.points = Math.round((country.rawScore / sumOfScores) * (116 * numCountries));
+                country.points = Math.round((country.rawScore / sumOfScores) * (EUROVISION_POINTS_MULTIPLIER * numCountries));
             } else {
                 country.points = 0;
             }

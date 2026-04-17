@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4285f4">
+    <title>Euroscore - Party Voting</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="icon-192.png">
+</head>
+<body>
+    <div id="app">
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen">
+            <div class="container">
+                <h1>🎉 Euroscore</h1>
+                <p class="tagline">Vote and celebrate with friends!</p>
+                <div class="auth-form">
+                    <input type="text" id="login-username" placeholder="Username" autocomplete="username">
+                    <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
+                    <button id="login-btn" class="btn btn-primary">Login</button>
+                    <button id="show-signup-btn" class="btn btn-secondary">Create Account</button>
+                    <div id="login-error" class="error-message"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Signup Screen -->
+        <div id="signup-screen" class="screen hidden">
+            <div class="container">
+                <h1>Create Account</h1>
+                <div class="auth-form">
+                    <input type="text" id="signup-username" placeholder="Username" autocomplete="username">
+                    <input type="email" id="signup-email" placeholder="Email" autocomplete="email">
+                    <input type="password" id="signup-password" placeholder="Password" autocomplete="new-password">
+                    <button id="signup-btn" class="btn btn-primary">Sign Up</button>
+                    <button id="show-login-btn" class="btn btn-secondary">Back to Login</button>
+                    <div id="signup-error" class="error-message"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Screen -->
+        <div id="main-screen" class="screen hidden">
+            <nav class="navbar">
+                <h2>🎉 Euroscore</h2>
+                <div class="nav-actions">
+                    <span id="username-display"></span>
+                    <button id="settings-btn" class="btn btn-small">⚙️ Settings</button>
+                    <button id="logout-btn" class="btn btn-small">Logout</button>
+                </div>
+            </nav>
+
+            <div class="container">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="my-parties">My Parties</button>
+                    <button class="tab-btn" data-tab="join">Join Party</button>
+                    <button class="tab-btn" data-tab="create">Create Party</button>
+                </div>
+
+                <!-- My Parties Tab with Sub-tabs -->
+                <div id="my-parties-tab" class="tab-content active">
+                    <div class="sub-tabs">
+                        <button class="sub-tab-btn active" data-subtab="hosted">🎉 Hosted by You</button>
+                        <button class="sub-tab-btn" data-subtab="joined">🎊 Joined Parties</button>
+                    </div>
+
+                    <!-- Hosted Parties Sub-tab -->
+                    <div id="hosted-subtab" class="sub-tab-content active">
+                        <div id="hosted-parties-list" class="parties-list">
+                            <p class="loading">Loading parties...</p>
+                        </div>
+                    </div>
+
+                    <!-- Joined Parties Sub-tab -->
+                    <div id="joined-subtab" class="sub-tab-content hidden">
+                        <div id="joined-parties-list" class="parties-list">
+                            <p class="loading">Loading parties...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Join Party Tab -->
+                <div id="join-tab" class="tab-content hidden">
+                    <h3>Join a Party</h3>
+                    <div class="form-group">
+                        <input type="text" id="party-code-input" placeholder="Enter Party Code">
+                        <button id="join-party-btn" class="btn btn-primary">Join Party</button>
+                        <div id="join-error" class="error-message"></div>
+                    </div>
+                </div>
+
+                <!-- Create Party Tab -->
+                <div id="create-tab" class="tab-content hidden">
+                    <h3>Create a New Party</h3>
+                    <div class="form-group">
+                        <input type="text" id="party-name-input" placeholder="Party Name">
+                        <input type="text" id="party-location-input" placeholder="Party Location">
+                        <input type="text" id="party-code-input-create" placeholder="Party Code (6 characters)">
+                        <div class="form-label">Which Competition</div>
+                        <select id="competition-select" class="form-select">
+                            <option value="">Select a Competition...</option>
+                        </select>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="guest-voting-checkbox" checked>
+                            <span>Enable Guest Voting</span>
+                        </label>
+                        <button id="create-party-btn" class="btn btn-primary">Create Party</button>
+                        <div id="create-error" class="error-message"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Party Detail Screen -->
+        <div id="party-screen" class="screen hidden">
+            <nav class="navbar">
+                <button id="back-to-main-btn" class="btn btn-small">← Back</button>
+                <h2 id="party-title"></h2>
+            </nav>
+
+            <div class="container">
+                <div class="party-info">
+                    <p id="competition-info" class="competition-info"></p>
+                    <p id="party-description"></p>
+                    <p class="party-code">Party Code: <strong id="party-code-display"></strong></p>
+                </div>
+
+                <!-- Party Detail Tabs -->
+                <div class="party-tabs">
+                    <button class="party-tab-btn active" data-partytab="voting">🗳️ Voting</button>
+                    <button class="party-tab-btn" data-partytab="scoreboard">🏆 Scoreboard</button>
+                </div>
+
+                <!-- Voting Tab -->
+                <div id="voting-tab" class="party-tab-content active">
+                    <div class="voting-section">
+                        <h3>Cast Your Vote</h3>
+                        <div class="vote-buttons">
+                            <button class="vote-btn" data-vote="up" title="Thumbs Up">
+                                👍
+                                <span>Up</span>
+                            </button>
+                            <button class="vote-btn" data-vote="middle" title="Thumbs Middle">
+                                👊
+                                <span>Middle</span>
+                            </button>
+                            <button class="vote-btn" data-vote="down" title="Thumbs Down">
+                                👎
+                                <span>Down</span>
+                            </button>
+                        </div>
+                        <p id="vote-status" class="vote-status"></p>
+                    </div>
+
+                    <div class="songs-section" id="songs-section">
+                        <h3>🎵 Songs</h3>
+                        <div id="songs-list" class="songs-list">
+                            <p class="loading">Loading songs...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scoreboard Tab -->
+                <div id="scoreboard-tab" class="party-tab-content hidden">
+                    <div class="scoreboard">
+                        <h3>🏆 Country Rankings</h3>
+                        <div id="scoreboard-content" class="scoreboard-content">
+                            <p class="loading">Loading scores...</p>
+                        </div>
+                        <button id="refresh-scores-btn" class="btn btn-secondary">Refresh Rankings</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div id="settings-screen" class="screen hidden">
+            <nav class="navbar">
+                <button id="back-from-settings-btn" class="btn btn-small">← Back</button>
+                <h2>Settings</h2>
+            </nav>
+
+            <div class="container">
+                <div class="settings-section">
+                    <h3>Display Settings</h3>
+                    <div class="form-group">
+                        <label class="setting-label">Display Mode</label>
+                        <p class="setting-description">Choose how the app appears when opened from home screen</p>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="display-mode" value="standalone" checked>
+                                <span>Standalone (Shows in separate window)</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="display-mode" value="fullscreen">
+                                <span>Fullscreen (Hides browser UI)</span>
+                            </label>
+                        </div>
+                        <button id="apply-display-btn" class="btn btn-secondary">Apply Display Mode</button>
+                        <p class="info-message">Note: Changing display mode requires reloading the app</p>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>App Mode</h3>
+                    <div class="form-group">
+                        <label class="setting-label">Select Mode</label>
+                        <p class="setting-description">Choose the primary function of the app</p>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="app-mode" value="score-entry" checked>
+                                <span>Score Entry Mode (Vote and enter scores)</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="app-mode" value="scoreboard">
+                                <span>Scoreboard Mode (View scoreboard only)</span>
+                            </label>
+                        </div>
+                        <button id="apply-mode-btn" class="btn btn-secondary">Apply Mode</button>
+                        <p id="mode-status" class="success-message hidden"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Parse SDK -->
+    <script src="https://npmcdn.com/parse@3.4.4/dist/parse.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

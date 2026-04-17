@@ -10,6 +10,10 @@ Parse.initialize(PARSE_CONFIG.appId, PARSE_CONFIG.javascriptKey);
 Parse.serverURL = PARSE_CONFIG.serverURL;
 console.log('Parse Config:', PARSE_CONFIG);
 
+const SCOREBOARD_QUERY_LIMIT = 10000;
+const UPVOTE_WEIGHT = 2;
+const EUROVISION_POINTS_MULTIPLIER = 116;
+
 // State management
 const state = {
     currentUser: null,
@@ -1516,7 +1520,7 @@ async function fetchScoreboardVotes({ partyId, competitionId }) {
     const Thumbs = Parse.Object.extend('Thumbs');
     const query = new Parse.Query(Thumbs);
     query.include('songDeets');
-    query.limit(10000);
+    query.limit(SCOREBOARD_QUERY_LIMIT);
 
     if (partyId) {
         const Parties = Parse.Object.extend('Parties');
@@ -1580,7 +1584,7 @@ function buildCountryRankings(votes, songs) {
 
     const rankings = Object.values(countryScores).map(country => ({
         ...country,
-        rawScore: country.totalVotes > 0 ? ((country.up * 2) - country.down) / country.totalVotes : 0
+        rawScore: (country.totalVotes > 0 ? ((country.up * UPVOTE_WEIGHT) - country.down) / country.totalVotes : 0) + Math.random()
     }));
 
     if (rankings.length === 0) return [];
@@ -1593,17 +1597,13 @@ function buildCountryRankings(votes, songs) {
         });
     }
 
-    rankings.sort((a, b) =>
-        (b.rawScore - a.rawScore) ||
-        (b.up - a.up) ||
-        a.countryName.localeCompare(b.countryName)
-    );
+    rankings.sort((a, b) => b.rawScore - a.rawScore);
 
     const numCountries = rankings.length;
     const sumOfScores = rankings.reduce((sum, country) => sum + country.rawScore, 0);
     rankings.forEach(country => {
         country.points = sumOfScores > 0
-            ? Math.round((country.rawScore / sumOfScores) * (116 * numCountries))
+            ? Math.round((country.rawScore / sumOfScores) * (EUROVISION_POINTS_MULTIPLIER * numCountries))
             : 0;
     });
 
@@ -1654,7 +1654,7 @@ async function loadScoreboard() {
         const query = new Parse.Query(Thumbs);
         query.equalTo('whichParty', partyPointer);
         query.include('songDeets');
-        query.limit(10000); // Set high limit to capture all votes for large parties
+        query.limit(SCOREBOARD_QUERY_LIMIT); // Set high limit to capture all votes for large parties
         
         const votes = await query.find();
         
@@ -1745,7 +1745,7 @@ async function loadScoreboard() {
         const rankings = Object.values(countryScores).map(country => {
             let rawScore = 0;
             if (country.totalVotes > 0) {
-                rawScore = ((country.up * 2) - country.down) / country.totalVotes;
+                rawScore = ((country.up * UPVOTE_WEIGHT) - country.down) / country.totalVotes;
             }
             // Add random tiebreaker between 0 and 1
             rawScore += Math.random();
@@ -1774,7 +1774,7 @@ async function loadScoreboard() {
         
         rankings.forEach(country => {
             if (sumOfScores > 0) {
-                country.points = Math.round((country.rawScore / sumOfScores) * (116 * numCountries));
+                country.points = Math.round((country.rawScore / sumOfScores) * (EUROVISION_POINTS_MULTIPLIER * numCountries));
             } else {
                 country.points = 0;
             }

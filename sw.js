@@ -1,4 +1,4 @@
-const CACHE_NAME = 'euroscore-v1';
+const CACHE_NAME = 'euroscore-v2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -9,6 +9,7 @@ const urlsToCache = [
   '/icon-512.png',
   'https://npmcdn.com/parse@3.4.4/dist/parse.min.js'
 ];
+const APP_SHELL_URLS = new Set(['/', '/index.html', '/styles.css', '/app.js', '/manifest.json']);
 
 // Install event - cache resources
 self.addEventListener('install', event => {
@@ -46,6 +47,40 @@ self.addEventListener('activate', event => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  const requestUrl = new URL(event.request.url);
+  const isSameOrigin = requestUrl.origin === self.location.origin;
+  const isAppShellRequest = isSameOrigin && APP_SHELL_URLS.has(requestUrl.pathname);
+  const isNavigationRequest = event.request.mode === 'navigate';
+
+  // Prefer fresh app shell/navigation responses so UI updates (like new tabs) appear reliably.
+  if (isNavigationRequest || isAppShellRequest) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseToCache));
+          }
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) {
+            return cached;
+          }
+          if (isNavigationRequest) {
+            return caches.match('/index.html');
+          }
+          throw new Error('Network request failed and no cache entry was found');
+        })
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then(response => {

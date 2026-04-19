@@ -75,7 +75,7 @@ self.addEventListener('fetch', event => {
           if (isNavigationRequest) {
             return caches.match('/index.html');
           }
-          throw new Error('Network request failed and no cache entry was found');
+          throw new Error(`Network request failed for ${event.request.url} and no cache entry was found`);
         })
     );
     return;

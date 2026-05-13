@@ -100,8 +100,13 @@ const elements = {
 };
 
 function getAppBasePath() {
-    const path = window.location.pathname || '/';
-    return path.endsWith('/') ? path : path.substring(0, path.lastIndexOf('/') + 1);
+    const path = window.location.pathname;
+    if (path.endsWith('/')) {
+        return path;
+    }
+
+    const lastSlashIndex = path.lastIndexOf('/');
+    return lastSlashIndex === -1 ? '/' : path.substring(0, lastSlashIndex + 1);
 }
 
 function createDynamicManifest(displayMode) {

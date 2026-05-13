@@ -859,8 +859,9 @@ async function stopQRScanner() {
             await html5QrCode.stop();
         } catch (e) {
             console.error('Error stopping scanner:', e);
+        } finally {
+            html5QrCode = null;
         }
-        html5QrCode = null;
     }
     elements.qrReader.classList.add('hidden');
     elements.stopScanBtn.classList.add('hidden');

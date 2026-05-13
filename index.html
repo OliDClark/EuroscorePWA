@@ -88,6 +88,10 @@
                     <div class="form-group">
                         <input type="text" id="party-code-input" placeholder="Enter Party Code">
                         <button id="join-party-btn" class="btn btn-primary">Join Party</button>
+                        <div class="qr-divider"><span>or</span></div>
+                        <button id="scan-qr-btn" class="btn btn-secondary">📷 Scan QR Code</button>
+                        <div id="qr-reader" class="hidden"></div>
+                        <button id="stop-scan-btn" class="btn btn-secondary hidden">⏹ Stop Scanning</button>
                         <div id="join-error" class="error-message"></div>
                     </div>
                 </div>
@@ -269,10 +273,24 @@
                 </div>
             </div>
         </div>
+        <!-- QR Code Modal -->
+        <div id="qr-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <button id="qr-modal-close" class="modal-close" aria-label="Close">×</button>
+                <h3 id="qr-modal-title"></h3>
+                <p id="qr-modal-subtitle" class="qr-subtitle"></p>
+                <div id="qr-code-container"></div>
+                <p class="qr-help-text">Scan to join this party</p>
+            </div>
+        </div>
     </div>
 
     <!-- Parse SDK -->
     <script src="https://npmcdn.com/parse@3.4.4/dist/parse.min.js"></script>
+    <!-- QR Code generation -->
+    <script src="qrcode.min.js"></script>
+    <!-- QR Code scanning -->
+    <script src="html5-qrcode.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

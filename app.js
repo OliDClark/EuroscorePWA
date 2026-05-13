@@ -96,7 +96,16 @@ const elements = {
     
     applyDisplayBtn: document.getElementById('apply-display-btn'),
     applyModeBtn: document.getElementById('apply-mode-btn'),
-    modeStatus: document.getElementById('mode-status')
+    modeStatus: document.getElementById('mode-status'),
+
+    qrModal: document.getElementById('qr-modal'),
+    qrModalTitle: document.getElementById('qr-modal-title'),
+    qrModalSubtitle: document.getElementById('qr-modal-subtitle'),
+    qrModalClose: document.getElementById('qr-modal-close'),
+    qrCodeContainer: document.getElementById('qr-code-container'),
+    scanQrBtn: document.getElementById('scan-qr-btn'),
+    stopScanBtn: document.getElementById('stop-scan-btn'),
+    qrReader: document.getElementById('qr-reader'),
 };
 
 function getAppBasePath() {
@@ -284,6 +293,14 @@ function setupEventListeners() {
     elements.mainScoreboardSourceSelect.addEventListener('change', handleMainScoreboardSourceChange);
     elements.mainScoreboardPartySelect.addEventListener('change', loadMainScoreboard);
     elements.mainScoreboardCompetitionSelect.addEventListener('change', loadMainScoreboard);
+
+    // QR code
+    elements.scanQrBtn.addEventListener('click', handleScanQR);
+    elements.stopScanBtn.addEventListener('click', stopQRScanner);
+    elements.qrModalClose.addEventListener('click', closeQRModal);
+    elements.qrModal.addEventListener('click', (e) => {
+        if (e.target === elements.qrModal) closeQRModal();
+    });
     
     // Voting
     document.querySelectorAll('.vote-btn').forEach(btn => {
@@ -600,6 +617,15 @@ function createPartyCard(party) {
             <span>Created: ${created}</span>
         </div>
     `;
+
+    const qrBtn = document.createElement('button');
+    qrBtn.className = 'btn btn-secondary btn-small qr-btn';
+    qrBtn.textContent = '📲 Show QR Code';
+    qrBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showQRModal(party);
+    });
+    card.appendChild(qrBtn);
     
     return card;
 }
@@ -749,7 +775,99 @@ async function handleJoinParty() {
     }
 }
 
-// Party detail screen
+// QR Code state
+let html5QrCode = null;
+let isProcessingScan = false;
+
+// Show QR code modal for a party
+function showQRModal(party) {
+    const name = party.get('Name');
+    const password = party.get('Password');
+    const payload = `euroscore:${password}`;
+
+    elements.qrModalTitle.textContent = name;
+    elements.qrModalSubtitle.textContent = `Party Code: ${password}`;
+
+    // Clear any previous QR code
+    elements.qrCodeContainer.innerHTML = '';
+
+    // Generate QR code
+    new QRCode(elements.qrCodeContainer, {
+        text: payload,
+        width: 200,
+        height: 200,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+    });
+
+    elements.qrModal.classList.remove('hidden');
+}
+
+// Close QR code modal
+function closeQRModal() {
+    elements.qrModal.classList.add('hidden');
+    elements.qrCodeContainer.innerHTML = '';
+}
+
+// Start QR code scanner
+async function handleScanQR() {
+    elements.joinError.textContent = '';
+    isProcessingScan = false;
+    elements.scanQrBtn.classList.add('hidden');
+    elements.qrReader.classList.remove('hidden');
+    elements.stopScanBtn.classList.remove('hidden');
+
+    html5QrCode = new Html5Qrcode('qr-reader');
+
+    try {
+        await html5QrCode.start(
+            { facingMode: 'environment' },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            onQRCodeScanned
+        );
+    } catch (err) {
+        console.error('Error starting QR scanner:', err);
+        elements.joinError.textContent = 'Could not access camera. Please allow camera permissions.';
+        await stopQRScanner();
+    }
+}
+
+// Callback when a QR code is successfully scanned
+async function onQRCodeScanned(decodedText) {
+    if (isProcessingScan) return; // Guard against multiple rapid callbacks
+    isProcessingScan = true;
+    await stopQRScanner();
+
+    const prefix = 'euroscore:';
+    if (!decodedText.startsWith(prefix)) {
+        elements.joinError.textContent = 'QR Code not recognised';
+        isProcessingScan = false;
+        return;
+    }
+
+    const partyCode = decodedText.substring(prefix.length);
+    elements.partyCodeInput.value = partyCode;
+    await handleJoinParty();
+    isProcessingScan = false;
+}
+
+// Stop the QR code scanner
+async function stopQRScanner() {
+    if (html5QrCode) {
+        try {
+            await html5QrCode.stop();
+        } catch (e) {
+            console.error('Error stopping scanner:', e);
+        }
+        html5QrCode = null;
+    }
+    elements.qrReader.classList.add('hidden');
+    elements.stopScanBtn.classList.add('hidden');
+    elements.scanQrBtn.classList.remove('hidden');
+}
+
+
 async function updatePartyScreen() {
     const party = state.currentParty;
     

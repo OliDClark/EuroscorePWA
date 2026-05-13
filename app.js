@@ -99,33 +99,51 @@ const elements = {
     modeStatus: document.getElementById('mode-status')
 };
 
+function getAppBasePath() {
+    const path = window.location.pathname;
+    if (path.endsWith('/')) {
+        return path;
+    }
+
+    const lastSlashIndex = path.lastIndexOf('/');
+    return lastSlashIndex === -1 ? '/' : path.substring(0, lastSlashIndex + 1);
+}
+
+function createDynamicManifest(displayMode) {
+    const appBasePath = getAppBasePath();
+    const appBaseUrl = new URL(appBasePath, window.location.origin);
+
+    return {
+        "name": "Euroscore",
+        "short_name": "Euroscore",
+        "description": "Vote and celebrate with friends!",
+        "start_url": appBasePath,
+        "scope": appBasePath,
+        "display": displayMode,
+        "background_color": "#ffffff",
+        "theme_color": "#4285f4",
+        "icons": [
+            {
+                "src": new URL('icon-192.png', appBaseUrl).href,
+                "sizes": "192x192",
+                "type": "image/png"
+            },
+            {
+                "src": new URL('icon-512.png', appBaseUrl).href,
+                "sizes": "512x512",
+                "type": "image/png"
+            }
+        ]
+    };
+}
+
 // Function to apply manifest display mode on page load
 function applyManifestDisplayMode() {
     try {
         const savedMode = localStorage.getItem('displayMode') || 'standalone';
         
         // Create a dynamic manifest with the saved display mode
-        const manifest = {
-            "name": "Euroscore",
-            "short_name": "Euroscore",
-            "description": "Vote and celebrate with friends!",
-            "start_url": "/",
-            "display": savedMode,
-            "background_color": "#ffffff",
-            "theme_color": "#4285f4",
-            "icons": [
-                {
-                    "src": "icon-192.png",
-                    "sizes": "192x192",
-                    "type": "image/png"
-                },
-                {
-                    "src": "icon-512.png",
-                    "sizes": "512x512",
-                    "type": "image/png"
-                }
-            ]
-        };
+        const manifest = createDynamicManifest(savedMode);
         
         // Create a new manifest blob and URL
         const manifestBlob = new Blob([JSON.stringify(manifest, null, 2)], {type: 'application/json'});
@@ -1918,27 +1936,7 @@ async function applyDisplayMode() {
         state.displayMode = selectedMode;
         
         // Create a dynamic manifest with the selected display mode
-        const manifest = {
-            "name": "Euroscore",
-            "short_name": "Euroscore",
-            "description": "Vote and celebrate with friends!",
-            "start_url": "/",
-            "display": selectedMode,
-            "background_color": "#ffffff",
-            "theme_color": "#4285f4",
-            "icons": [
-                {
-                    "src": "icon-192.png",
-                    "sizes": "192x192",
-                    "type": "image/png"
-                },
-                {
-                    "src": "icon-512.png",
-                    "sizes": "512x512",
-                    "type": "image/png"
-                }
-            ]
-        };
+        const manifest = createDynamicManifest(selectedMode);
         
         // Create a new manifest blob and URL
         const manifestBlob = new Blob([JSON.stringify(manifest, null, 2)], {type: 'application/json'});

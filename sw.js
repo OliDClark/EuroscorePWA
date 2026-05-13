@@ -1,14 +1,16 @@
 const CACHE_NAME = 'euroscore-v1.0.0';
+const swScopeUrl = self.registration.scope;
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/app.js',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
+  '',
+  'index.html',
+  'styles.css',
+  'app.js',
+  'manifest.json',
+  'icon-192.png',
+  'icon-512.png'
+].map(path => new URL(path, swScopeUrl).toString()).concat([
   'https://npmcdn.com/parse@3.4.4/dist/parse.min.js'
-];
+]);
 
 // Install event - cache resources
 self.addEventListener('install', event => {

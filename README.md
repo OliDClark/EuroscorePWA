@@ -54,10 +54,13 @@ The app creates the following Parse classes automatically:
   - password
 
 - **Party**
-  - name (String)
-  - description (String)
-  - code (String) - unique 6-character code
-  - creator (Pointer to User)
+  - Name (String)
+  - Location (String)
+  - Code (String) - unique party code for joining
+  - Password (String) - party password required to join
+  - Host (Pointer to User)
+
+Note: older parties may store the party code in the password field (legacy format).
 
 - **PartyMember**
   - user (Pointer to User)
@@ -106,13 +109,13 @@ Then open `http://localhost:8000` in your browser.
 
 ### Creating a Party
 1. Navigate to "Create Party" tab
-2. Enter party name and optional description
+2. Enter party name, party code, and party password
 3. Click "Create Party"
-4. Share the party code with friends
+4. Share both the party code and party password with friends
 
 ### Joining a Party
 1. Navigate to "Join Party" tab
-2. Enter the 6-character party code
+2. Enter the party code and party password
 3. Click "Join Party"
 
 ### Voting

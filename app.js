@@ -885,8 +885,10 @@ let isProcessingScan = false;
 function showQRModal(party) {
     const name = party.get('Name');
     const partyCode = party.get('Code') || party.get('Password');
-    const partyPassword = party.get('Password') || '';
-    const payload = `euroscore:party:${party.id}:${encodeURIComponent(partyPassword)}`;
+    const partyPassword = party.get('Code') ? (party.get('Password') || '') : '';
+    const payload = partyPassword
+        ? `euroscore:party:${party.id}:${encodeURIComponent(partyPassword)}`
+        : `euroscore:party:${party.id}`;
 
     elements.qrModalTitle.textContent = name;
     elements.qrModalSubtitle.textContent = `Party Code: ${partyCode}`;
@@ -973,7 +975,8 @@ async function onQRCodeScanned(decodedText) {
         }
 
         elements.partyCodeInput.value = partyCode;
-        elements.joinError.textContent = 'Enter the party password, then tap Join Party.';
+        elements.partyPasswordInput.value = partyCode;
+        await handleJoinParty();
     } finally {
         isProcessingScan = false;
     }

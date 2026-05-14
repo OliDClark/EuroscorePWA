@@ -60,6 +60,8 @@ The app creates the following Parse classes automatically:
   - password (String) - party password required to join
   - creator (Pointer to User)
 
+Note: older parties may store the party code in the password field (legacy format).
+
 - **PartyMember**
   - user (Pointer to User)
   - party (Pointer to Party)

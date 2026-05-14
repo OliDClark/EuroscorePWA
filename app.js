@@ -14,6 +14,7 @@ const APP_VERSION = 'v1.0.2';
 const SCOREBOARD_QUERY_LIMIT = 10000;
 const UPVOTE_WEIGHT = 2;
 const EUROVISION_POINTS_MULTIPLIER = 116;
+const PARTY_NOT_FOUND_OR_PASSWORD_INCORRECT = 'Party not found or password incorrect';
 
 // State management
 const state = {
@@ -763,15 +764,20 @@ async function handleJoinParty(options = {}) {
                 party = await query.get(effectivePartyId);
             } catch (error) {
                 if (error && error.code === 101) {
-                    elements.joinError.textContent = 'Party not found or password incorrect';
-                    return;
+                    party = null;
+                } else {
+                    throw error;
                 }
-                throw error;
+            }
+
+            if (!party) {
+                elements.joinError.textContent = PARTY_NOT_FOUND_OR_PASSWORD_INCORRECT;
+                return;
             }
 
             const partyPassword = normalizePartyPassword(party.get('Password'));
             if (partyPassword !== password) {
-                elements.joinError.textContent = 'Party not found or password incorrect';
+                elements.joinError.textContent = PARTY_NOT_FOUND_OR_PASSWORD_INCORRECT;
                 return;
             }
         } else {
@@ -781,7 +787,7 @@ async function handleJoinParty(options = {}) {
         
         if (!party) {
             elements.joinError.textContent = effectivePartyId
-                ? 'Party not found or password incorrect'
+                ? PARTY_NOT_FOUND_OR_PASSWORD_INCORRECT
                 : 'Party not found';
             return;
         }

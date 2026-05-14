@@ -727,9 +727,7 @@ async function handleCreateParty() {
 
 async function handleJoinParty(options = {}) {
     const { requirePartyId = false, partyId = null } = options;
-    const selectedPartyId = (partyId || '').trim();
-    const manualPartyId = elements.partyIdInput ? elements.partyIdInput.value.trim() : '';
-    const effectivePartyId = selectedPartyId || (requirePartyId ? manualPartyId : '');
+    const effectivePartyId = (partyId || (requirePartyId ? elements.partyIdInput?.value : '') || '').trim();
     const password = elements.partyCodeInput.value.trim().toUpperCase();
     
     elements.joinError.textContent = '';
@@ -751,12 +749,28 @@ async function handleJoinParty(options = {}) {
         // Find party by ID and password (manual join), or by password only (legacy QR payload)
         const Parties = Parse.Object.extend('Parties');
         const query = new Parse.Query(Parties);
+        let party = null;
+
         if (effectivePartyId) {
-            query.equalTo('objectId', effectivePartyId);
+            try {
+                party = await query.get(effectivePartyId);
+            } catch (error) {
+                if (error && error.code === 101) {
+                    elements.joinError.textContent = 'Party not found or password incorrect';
+                    return;
+                }
+                throw error;
+            }
+
+            const partyPassword = (party.get('Password') || '').toUpperCase();
+            if (partyPassword !== password) {
+                elements.joinError.textContent = 'Party not found or password incorrect';
+                return;
+            }
+        } else {
+            query.equalTo('Password', password);
+            party = await query.first();
         }
-        query.equalTo('Password', password);
-        
-        const party = await query.first();
         
         if (!party) {
             elements.joinError.textContent = effectivePartyId

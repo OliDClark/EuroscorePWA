@@ -885,7 +885,7 @@ let isProcessingScan = false;
 function showQRModal(party) {
     const name = party.get('Name');
     const partyCode = party.get('Code') || party.get('Password');
-    const partyPassword = party.get('Code') ? (party.get('Password') || '') : '';
+    const partyPassword = isLegacyParty(party) ? '' : (party.get('Password') || '');
     const payload = partyPassword
         ? `euroscore:party:${party.id}:${encodeURIComponent(partyPassword)}`
         : `euroscore:party:${party.id}`;
@@ -2160,6 +2160,10 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function isLegacyParty(party) {
+    return !party.get('Code');
 }
 
 // Settings functions

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'euroscore-v1.0.0';
+const CACHE_NAME = 'euroscore-v1.1.0';
 const swScopeUrl = self.registration.scope;
 const urlsToCache = [
   '',
@@ -7,7 +7,9 @@ const urlsToCache = [
   'app.js',
   'manifest.json',
   'icon-192.png',
-  'icon-512.png'
+  'icon-512.png',
+  'qrcode.min.js',
+  'html5-qrcode.min.js'
 ].map(path => new URL(path, swScopeUrl).toString()).concat([
   'https://npmcdn.com/parse@3.4.4/dist/parse.min.js'
 ]);

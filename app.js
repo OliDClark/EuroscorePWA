@@ -741,12 +741,12 @@ async function handleJoinParty(options = {}) {
     elements.joinError.textContent = '';
     
     if (requirePartyId && !effectivePartyId) {
-        elements.joinError.textContent = 'Please enter a party ID';
+        elements.joinError.textContent = 'Please enter a Party ID';
         return;
     }
 
     if (!password) {
-        elements.joinError.textContent = 'Please enter a party password';
+        elements.joinError.textContent = 'Please enter a Party Password';
         return;
     }
     

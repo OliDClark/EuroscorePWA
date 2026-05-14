@@ -58,6 +58,7 @@ const elements = {
     backFromSettingsBtn: document.getElementById('back-from-settings-btn'),
     appVersion: document.getElementById('app-version'),
     
+    partyIdInput: document.getElementById('party-id-input'),
     partyCodeInput: document.getElementById('party-code-input'),
     joinPartyBtn: document.getElementById('join-party-btn'),
     joinError: document.getElementById('join-error'),
@@ -285,7 +286,7 @@ function setupEventListeners() {
     });
     
     // Party actions
-    elements.joinPartyBtn.addEventListener('click', handleJoinParty);
+    elements.joinPartyBtn.addEventListener('click', () => handleJoinParty({ requirePartyId: true }));
     elements.createPartyBtn.addEventListener('click', handleCreateParty);
     elements.backToMainBtn.addEventListener('click', showMainScreen);
     elements.refreshScoresBtn.addEventListener('click', loadScoreboard);
@@ -724,13 +725,22 @@ async function handleCreateParty() {
     }
 }
 
-async function handleJoinParty() {
+async function handleJoinParty(options = {}) {
+    const { requirePartyId = false, partyId = null } = options;
+    const selectedPartyId = (partyId || '').trim();
+    const manualPartyId = elements.partyIdInput ? elements.partyIdInput.value.trim() : '';
+    const effectivePartyId = selectedPartyId || (requirePartyId ? manualPartyId : '');
     const password = elements.partyCodeInput.value.trim().toUpperCase();
     
     elements.joinError.textContent = '';
     
+    if (requirePartyId && !effectivePartyId) {
+        elements.joinError.textContent = 'Please enter a party ID';
+        return;
+    }
+
     if (!password) {
-        elements.joinError.textContent = 'Please enter a party code';
+        elements.joinError.textContent = 'Please enter a party password';
         return;
     }
     
@@ -738,15 +748,20 @@ async function handleJoinParty() {
     elements.joinPartyBtn.textContent = 'Joining...';
     
     try {
-        // Find party by password
+        // Find party by ID and password (manual join), or by password only (legacy QR payload)
         const Parties = Parse.Object.extend('Parties');
         const query = new Parse.Query(Parties);
+        if (effectivePartyId) {
+            query.equalTo('objectId', effectivePartyId);
+        }
         query.equalTo('Password', password);
         
         const party = await query.first();
         
         if (!party) {
-            elements.joinError.textContent = 'Party not found';
+            elements.joinError.textContent = effectivePartyId
+                ? 'Party not found or password incorrect'
+                : 'Party not found';
             return;
         }
         
@@ -771,6 +786,9 @@ async function handleJoinParty() {
         await loadUserParties();
         
         // Clear input
+        if (elements.partyIdInput) {
+            elements.partyIdInput.value = '';
+        }
         elements.partyCodeInput.value = '';
         
         // Show the party
@@ -816,6 +834,9 @@ async function joinPartyById(partyId) {
         await loadUserParties();
 
         // Clear input
+        if (elements.partyIdInput) {
+            elements.partyIdInput.value = '';
+        }
         elements.partyCodeInput.value = '';
 
         // Show the party

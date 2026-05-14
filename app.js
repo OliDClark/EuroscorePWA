@@ -59,12 +59,14 @@ const elements = {
     appVersion: document.getElementById('app-version'),
     
     partyCodeInput: document.getElementById('party-code-input'),
+    partyPasswordInput: document.getElementById('party-password-input'),
     joinPartyBtn: document.getElementById('join-party-btn'),
     joinError: document.getElementById('join-error'),
     
     partyNameInput: document.getElementById('party-name-input'),
     partyLocationInput: document.getElementById('party-location-input'),
     partyCodeInputCreate: document.getElementById('party-code-input-create'),
+    partyPasswordInputCreate: document.getElementById('party-password-input-create'),
     competitionSelect: document.getElementById('competition-select'),
     guestVotingCheckbox: document.getElementById('guest-voting-checkbox'),
     createPartyBtn: document.getElementById('create-party-btn'),
@@ -604,7 +606,7 @@ function createPartyCard(party) {
     
     const name = party.get('Name');
     const location = party.get('Location') || 'No location';
-    const password = party.get('Password');
+    const partyCode = party.get('Code') || party.get('Password');
     const created = party.createdAt.toLocaleDateString();
     const comp = party.get('whichComp');
     const compInfo = comp ? `${comp.get('stage')} ${comp.get('year')}` : 'General';
@@ -613,7 +615,7 @@ function createPartyCard(party) {
         <h4>${escapeHtml(name)}</h4>
         <p><strong>${escapeHtml(compInfo)}</strong> • ${escapeHtml(location)}</p>
         <div class="party-meta">
-            <span>Code: ${escapeHtml(password)}</span>
+            <span>Code: ${escapeHtml(partyCode)}</span>
             <span>Created: ${created}</span>
         </div>
     `;
@@ -634,6 +636,7 @@ async function handleCreateParty() {
     const name = elements.partyNameInput.value.trim();
     const location = elements.partyLocationInput.value.trim();
     const partyCode = elements.partyCodeInputCreate.value.trim().toUpperCase();
+    const partyPassword = elements.partyPasswordInputCreate.value.trim();
     const competitionId = elements.competitionSelect.value;
     const guestVoting = elements.guestVotingCheckbox.checked;
     
@@ -646,6 +649,11 @@ async function handleCreateParty() {
     
     if (!partyCode) {
         elements.createError.textContent = 'Please enter a party code';
+        return;
+    }
+
+    if (!partyPassword) {
+        elements.createError.textContent = 'Please enter a party password';
         return;
     }
     
@@ -671,10 +679,20 @@ async function handleCreateParty() {
 
         // Check if party code already exists
         const codeQuery = new Parse.Query(Parties);
-        codeQuery.equalTo('Password', partyCode);
+        codeQuery.equalTo('Code', partyCode);
         const existingCodeParty = await codeQuery.first();
 
         if (existingCodeParty) {
+            elements.createError.textContent = 'Party code is already taken. Please choose another.';
+            return;
+        }
+
+        // Legacy compatibility: old parties stored code in Password
+        const legacyCodeQuery = new Parse.Query(Parties);
+        legacyCodeQuery.equalTo('Password', partyCode);
+        const existingLegacyCodeParty = await legacyCodeQuery.first();
+
+        if (existingLegacyCodeParty) {
             elements.createError.textContent = 'Party code is already taken. Please choose another.';
             return;
         }
@@ -683,7 +701,8 @@ async function handleCreateParty() {
         
         party.set('Name', name);
         party.set('Location', location || 'Online');
-        party.set('Password', partyCode);
+        party.set('Code', partyCode);
+        party.set('Password', partyPassword);
         party.set('Host', state.currentUser);
         party.set('GuestVoting', guestVoting);
         
@@ -706,6 +725,7 @@ async function handleCreateParty() {
         elements.partyNameInput.value = '';
         elements.partyLocationInput.value = '';
         elements.partyCodeInputCreate.value = '';
+        elements.partyPasswordInputCreate.value = '';
         elements.competitionSelect.value = '';
         elements.guestVotingCheckbox.checked = true;
         
@@ -725,12 +745,18 @@ async function handleCreateParty() {
 }
 
 async function handleJoinParty() {
-    const password = elements.partyCodeInput.value.trim().toUpperCase();
+    const partyCode = elements.partyCodeInput.value.trim().toUpperCase();
+    const partyPassword = elements.partyPasswordInput.value.trim();
     
     elements.joinError.textContent = '';
     
-    if (!password) {
+    if (!partyCode) {
         elements.joinError.textContent = 'Please enter a party code';
+        return;
+    }
+
+    if (!partyPassword) {
+        elements.joinError.textContent = 'Please enter a party password';
         return;
     }
     
@@ -738,15 +764,26 @@ async function handleJoinParty() {
     elements.joinPartyBtn.textContent = 'Joining...';
     
     try {
-        // Find party by password
+        // Find party by code + password
         const Parties = Parse.Object.extend('Parties');
         const query = new Parse.Query(Parties);
-        query.equalTo('Password', password);
+        query.equalTo('Code', partyCode);
+        query.equalTo('Password', partyPassword);
         
-        const party = await query.first();
+        let party = await query.first();
+
+        // Legacy compatibility: old parties stored code in Password
+        if (!party) {
+            const legacyQuery = new Parse.Query(Parties);
+            legacyQuery.equalTo('Password', partyCode);
+            const legacyParty = await legacyQuery.first();
+            if (legacyParty && partyPassword.toUpperCase() === partyCode) {
+                party = legacyParty;
+            }
+        }
         
         if (!party) {
-            elements.joinError.textContent = 'Party not found';
+            elements.joinError.textContent = 'Party not found. Check your code and password.';
             return;
         }
         
@@ -772,6 +809,7 @@ async function handleJoinParty() {
         
         // Clear input
         elements.partyCodeInput.value = '';
+        elements.partyPasswordInput.value = '';
         
         // Show the party
         showPartyScreen(party);
@@ -817,6 +855,7 @@ async function joinPartyById(partyId) {
 
         // Clear input
         elements.partyCodeInput.value = '';
+        elements.partyPasswordInput.value = '';
 
         // Show the party
         showPartyScreen(party);
@@ -836,11 +875,11 @@ let isProcessingScan = false;
 // Show QR code modal for a party
 function showQRModal(party) {
     const name = party.get('Name');
-    const password = party.get('Password');
+    const partyCode = party.get('Code') || party.get('Password');
     const payload = `euroscore:party:${party.id}`;
 
     elements.qrModalTitle.textContent = name;
-    elements.qrModalSubtitle.textContent = `Party Code: ${password}`;
+    elements.qrModalSubtitle.textContent = `Party Code: ${partyCode}`;
 
     // Clear any previous QR code
     elements.qrCodeContainer.innerHTML = '';
@@ -920,6 +959,7 @@ async function onQRCodeScanned(decodedText) {
         }
 
         elements.partyCodeInput.value = partyCode;
+        elements.partyPasswordInput.value = partyCode;
         await handleJoinParty();
     } finally {
         isProcessingScan = false;
@@ -956,7 +996,7 @@ async function updatePartyScreen() {
     
     elements.partyTitle.textContent = party.get('Name');
     elements.partyDescription.textContent = party.get('Location') || 'No location';
-    elements.partyCodeDisplay.textContent = party.get('Password');
+    elements.partyCodeDisplay.textContent = party.get('Code') || party.get('Password');
     
     // Display competition stage and year
     const competition = party.get('whichComp');
@@ -2068,9 +2108,9 @@ async function generateUniquePartyCode() {
     while (!isUnique && attempts < maxAttempts) {
         code = generatePartyCode();
         
-        // Check if password already exists
+        // Check if party code already exists
         const query = new Parse.Query(Parties);
-        query.equalTo('Password', code);
+        query.equalTo('Code', code);
         const existing = await query.first();
         
         if (!existing) {

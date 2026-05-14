@@ -13,12 +13,12 @@
 #### Create Party
 - Provide a party name (required)
 - Add optional description
-- System generates unique 6-character code
+- Enter a unique party code and party password
 - Automatic code uniqueness verification
 - Creator is automatically added as first member
 
 #### Join Party
-- Enter 6-character party code
+- Enter party code and party password
 - Case-insensitive code matching
 - Duplicate membership prevention
 - Immediate party access after joining

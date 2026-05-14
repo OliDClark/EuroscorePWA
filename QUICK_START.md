@@ -74,6 +74,7 @@ npx serve
 
 ### Can't join party
 - ✅ Verify party code is correct (case-insensitive)
+- ✅ Verify party password is correct
 - ✅ Check you're logged in
 - ✅ Ensure party exists
 

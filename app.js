@@ -10,7 +10,7 @@ Parse.initialize(PARSE_CONFIG.appId, PARSE_CONFIG.javascriptKey);
 Parse.serverURL = PARSE_CONFIG.serverURL;
 console.log('Parse Config:', PARSE_CONFIG);
 
-const APP_VERSION = 'v1.0.0';
+const APP_VERSION = 'v1.0.1';
 const SCOREBOARD_QUERY_LIMIT = 10000;
 const UPVOTE_WEIGHT = 2;
 const EUROVISION_POINTS_MULTIPLIER = 116;

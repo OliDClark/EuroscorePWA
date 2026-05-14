@@ -772,15 +772,11 @@ async function handleJoinParty(options = {}) {
                 }
             }
 
-            if (!party) {
-                elements.joinError.textContent = PARTY_NOT_FOUND_OR_PASSWORD_INCORRECT;
-                return;
-            }
-
-            const partyPassword = normalizePartyPassword(party.get('Password'));
-            if (partyPassword !== password) {
-                elements.joinError.textContent = PARTY_NOT_FOUND_OR_PASSWORD_INCORRECT;
-                return;
+            if (party) {
+                const partyPassword = normalizePartyPassword(party.get('Password'));
+                if (partyPassword !== password) {
+                    party = null;
+                }
             }
         } else {
             query.equalTo('Password', password);

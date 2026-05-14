@@ -777,7 +777,8 @@ async function handleJoinParty() {
             const legacyQuery = new Parse.Query(Parties);
             legacyQuery.equalTo('Password', partyCode);
             const legacyParty = await legacyQuery.first();
-            if (legacyParty && partyPassword.toUpperCase() === partyCode) {
+            const legacyPassword = legacyParty ? (legacyParty.get('Password') || '') : '';
+            if (legacyParty && partyPassword.toUpperCase() === legacyPassword.toUpperCase()) {
                 party = legacyParty;
             }
         }
@@ -832,9 +833,19 @@ async function joinPartyById(partyId, providedPassword = null) {
         const Parties = Parse.Object.extend('Parties');
         const query = new Parse.Query(Parties);
         const party = await query.get(partyId);
+        const partyCode = party.get('Code');
         const partyPassword = party.get('Password');
 
-        if (!providedPassword || providedPassword !== partyPassword) {
+        if (!providedPassword) {
+            elements.joinError.textContent = 'Party password is incorrect';
+            return;
+        }
+
+        const isValidPassword = partyCode
+            ? providedPassword === partyPassword
+            : providedPassword.toUpperCase() === String(partyPassword || '').toUpperCase();
+
+        if (!isValidPassword) {
             elements.joinError.textContent = 'Party password is incorrect';
             return;
         }
@@ -970,7 +981,7 @@ async function onQRCodeScanned(decodedText) {
         }
 
         elements.partyCodeInput.value = partyCode;
-        elements.partyPasswordInput.value = partyCode;
+        elements.partyPasswordInput.value = partyCode.toUpperCase();
         await handleJoinParty();
     } finally {
         isProcessingScan = false;

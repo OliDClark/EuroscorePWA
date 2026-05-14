@@ -10,10 +10,13 @@ Parse.initialize(PARSE_CONFIG.appId, PARSE_CONFIG.javascriptKey);
 Parse.serverURL = PARSE_CONFIG.serverURL;
 console.log('Parse Config:', PARSE_CONFIG);
 
-const APP_VERSION = 'v1.0.2';
+const APP_VERSION = 'v1.0.3';
 const SCOREBOARD_QUERY_LIMIT = 10000;
 const UPVOTE_WEIGHT = 2;
 const EUROVISION_POINTS_MULTIPLIER = 116;
+const PARSE_OBJECT_NOT_FOUND_ERROR_CODE = 101;
+const PARTY_NOT_FOUND = 'Party not found';
+const PARTY_NOT_FOUND_OR_PASSWORD_INCORRECT = 'Party not found or password incorrect';
 
 // State management
 const state = {
@@ -58,6 +61,7 @@ const elements = {
     backFromSettingsBtn: document.getElementById('back-from-settings-btn'),
     appVersion: document.getElementById('app-version'),
     
+    partyIdInput: document.getElementById('party-id-input'),
     partyCodeInput: document.getElementById('party-code-input'),
     joinPartyBtn: document.getElementById('join-party-btn'),
     joinError: document.getElementById('join-error'),
@@ -285,7 +289,7 @@ function setupEventListeners() {
     });
     
     // Party actions
-    elements.joinPartyBtn.addEventListener('click', handleJoinParty);
+    elements.joinPartyBtn.addEventListener('click', () => handleJoinParty({ requirePartyId: true }));
     elements.createPartyBtn.addEventListener('click', handleCreateParty);
     elements.backToMainBtn.addEventListener('click', showMainScreen);
     elements.refreshScoresBtn.addEventListener('click', loadScoreboard);
@@ -724,13 +728,27 @@ async function handleCreateParty() {
     }
 }
 
-async function handleJoinParty() {
-    const password = elements.partyCodeInput.value.trim().toUpperCase();
+function normalizePartyPassword(value) {
+    return (value || '').trim().toUpperCase();
+}
+
+async function handleJoinParty(options = {}) {
+    const { requirePartyId = false, partyId = null } = options;
+    let resolvedPartyId = (partyId || '').trim();
+    if (!resolvedPartyId && requirePartyId) {
+        resolvedPartyId = (elements.partyIdInput?.value || '').trim();
+    }
+    const password = normalizePartyPassword(elements.partyCodeInput.value);
     
     elements.joinError.textContent = '';
     
+    if (requirePartyId && !resolvedPartyId) {
+        elements.joinError.textContent = 'Please enter a Party ID';
+        return;
+    }
+
     if (!password) {
-        elements.joinError.textContent = 'Please enter a party code';
+        elements.joinError.textContent = 'Please enter a Party Password';
         return;
     }
     
@@ -738,15 +756,37 @@ async function handleJoinParty() {
     elements.joinPartyBtn.textContent = 'Joining...';
     
     try {
-        // Find party by password
+        // Find party by ID and password (manual join), or by password only (legacy QR payload)
         const Parties = Parse.Object.extend('Parties');
         const query = new Parse.Query(Parties);
-        query.equalTo('Password', password);
-        
-        const party = await query.first();
+        let party = null;
+
+        if (resolvedPartyId) {
+            try {
+                party = await query.get(resolvedPartyId);
+            } catch (error) {
+                if (error && error.code === PARSE_OBJECT_NOT_FOUND_ERROR_CODE) {
+                    party = null;
+                } else {
+                    throw error;
+                }
+            }
+
+            if (party) {
+                const partyPassword = normalizePartyPassword(party.get('Password'));
+                if (partyPassword !== password) {
+                    party = null;
+                }
+            }
+        } else {
+            query.equalTo('Password', password);
+            party = await query.first();
+        }
         
         if (!party) {
-            elements.joinError.textContent = 'Party not found';
+            elements.joinError.textContent = resolvedPartyId
+                ? PARTY_NOT_FOUND_OR_PASSWORD_INCORRECT
+                : PARTY_NOT_FOUND;
             return;
         }
         
@@ -771,6 +811,9 @@ async function handleJoinParty() {
         await loadUserParties();
         
         // Clear input
+        if (elements.partyIdInput) {
+            elements.partyIdInput.value = '';
+        }
         elements.partyCodeInput.value = '';
         
         // Show the party
@@ -816,6 +859,9 @@ async function joinPartyById(partyId) {
         await loadUserParties();
 
         // Clear input
+        if (elements.partyIdInput) {
+            elements.partyIdInput.value = '';
+        }
         elements.partyCodeInput.value = '';
 
         // Show the party

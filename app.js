@@ -10,7 +10,7 @@ Parse.initialize(PARSE_CONFIG.appId, PARSE_CONFIG.javascriptKey);
 Parse.serverURL = PARSE_CONFIG.serverURL;
 console.log('Parse Config:', PARSE_CONFIG);
 
-const APP_VERSION = 'v1.0.1';
+const APP_VERSION = 'v1.0.2';
 const SCOREBOARD_QUERY_LIMIT = 10000;
 const UPVOTE_WEIGHT = 2;
 const EUROVISION_POINTS_MULTIPLIER = 116;
@@ -668,6 +668,16 @@ async function handleCreateParty() {
             elements.createError.textContent = 'Party name already exists. Please choose another.';
             return;
         }
+
+        // Check if party code already exists
+        const codeQuery = new Parse.Query(Parties);
+        codeQuery.equalTo('Password', partyCode);
+        const existingCodeParty = await codeQuery.first();
+
+        if (existingCodeParty) {
+            elements.createError.textContent = 'Party code is already taken. Please choose another.';
+            return;
+        }
         
         const party = new Parties();
         
@@ -775,6 +785,50 @@ async function handleJoinParty() {
     }
 }
 
+async function joinPartyById(partyId) {
+    elements.joinError.textContent = '';
+    elements.joinPartyBtn.disabled = true;
+    elements.joinPartyBtn.textContent = 'Joining...';
+
+    try {
+        const Parties = Parse.Object.extend('Parties');
+        const query = new Parse.Query(Parties);
+        const party = await query.get(partyId);
+
+        // Check if already a guest
+        const guestsRelation = party.relation('Guests');
+        const guestsQuery = guestsRelation.query();
+        guestsQuery.equalTo('objectId', state.currentUser.id);
+        const existing = await guestsQuery.first();
+
+        if (existing) {
+            // Already a member, just show the party
+            await loadUserParties();
+            showPartyScreen(party);
+            return;
+        }
+
+        // Add as guest
+        guestsRelation.add(state.currentUser);
+        await party.save();
+
+        // Refresh parties list
+        await loadUserParties();
+
+        // Clear input
+        elements.partyCodeInput.value = '';
+
+        // Show the party
+        showPartyScreen(party);
+    } catch (error) {
+        console.error('Error joining party by ID:', error);
+        elements.joinError.textContent = 'Failed to join party: ' + error.message;
+    } finally {
+        elements.joinPartyBtn.disabled = false;
+        elements.joinPartyBtn.textContent = 'Join Party';
+    }
+}
+
 // QR Code state
 let html5QrCode = null;
 let isProcessingScan = false;
@@ -783,7 +837,7 @@ let isProcessingScan = false;
 function showQRModal(party) {
     const name = party.get('Name');
     const password = party.get('Password');
-    const payload = `euroscore:${password}`;
+    const payload = `euroscore:party:${party.id}`;
 
     elements.qrModalTitle.textContent = name;
     elements.qrModalSubtitle.textContent = `Party Code: ${password}`;
@@ -846,10 +900,24 @@ async function onQRCodeScanned(decodedText) {
         return;
     }
 
-    const partyCode = decodedText.substring(prefix.length);
-    elements.partyCodeInput.value = partyCode;
-    await handleJoinParty();
-    isProcessingScan = false;
+    const payload = decodedText.substring(prefix.length);
+
+    try {
+        if (payload.startsWith('party:')) {
+            const partyId = payload.substring('party:'.length).trim();
+            if (!partyId) {
+                elements.joinError.textContent = 'QR Code not recognised';
+                return;
+            }
+            await joinPartyById(partyId);
+            return;
+        }
+
+        elements.partyCodeInput.value = payload;
+        await handleJoinParty();
+    } finally {
+        isProcessingScan = false;
+    }
 }
 
 // Stop the QR code scanner

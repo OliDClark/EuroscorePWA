@@ -725,10 +725,17 @@ async function handleCreateParty() {
     }
 }
 
+function normalizePartyPassword(value) {
+    return (value || '').trim().toUpperCase();
+}
+
 async function handleJoinParty(options = {}) {
     const { requirePartyId = false, partyId = null } = options;
-    const effectivePartyId = (partyId || (requirePartyId ? elements.partyIdInput?.value : '') || '').trim();
-    const password = elements.partyCodeInput.value.trim().toUpperCase();
+    let effectivePartyId = (partyId || '').trim();
+    if (!effectivePartyId && requirePartyId) {
+        effectivePartyId = (elements.partyIdInput?.value || '').trim();
+    }
+    const password = normalizePartyPassword(elements.partyCodeInput.value);
     
     elements.joinError.textContent = '';
     
@@ -762,7 +769,7 @@ async function handleJoinParty(options = {}) {
                 throw error;
             }
 
-            const partyPassword = (party.get('Password') || '').toUpperCase();
+            const partyPassword = normalizePartyPassword(party.get('Password'));
             if (partyPassword !== password) {
                 elements.joinError.textContent = 'Party not found or password incorrect';
                 return;

@@ -14,6 +14,8 @@ const APP_VERSION = 'v1.0.2';
 const SCOREBOARD_QUERY_LIMIT = 10000;
 const UPVOTE_WEIGHT = 2;
 const EUROVISION_POINTS_MULTIPLIER = 116;
+const PARSE_OBJECT_NOT_FOUND_ERROR_CODE = 101;
+const PARTY_NOT_FOUND = 'Party not found';
 const PARTY_NOT_FOUND_OR_PASSWORD_INCORRECT = 'Party not found or password incorrect';
 
 // State management
@@ -732,15 +734,15 @@ function normalizePartyPassword(value) {
 
 async function handleJoinParty(options = {}) {
     const { requirePartyId = false, partyId = null } = options;
-    let effectivePartyId = (partyId || '').trim();
-    if (!effectivePartyId && requirePartyId) {
-        effectivePartyId = (elements.partyIdInput?.value || '').trim();
+    let resolvedPartyId = (partyId || '').trim();
+    if (!resolvedPartyId && requirePartyId) {
+        resolvedPartyId = (elements.partyIdInput?.value || '').trim();
     }
     const password = normalizePartyPassword(elements.partyCodeInput.value);
     
     elements.joinError.textContent = '';
     
-    if (requirePartyId && !effectivePartyId) {
+    if (requirePartyId && !resolvedPartyId) {
         elements.joinError.textContent = 'Please enter a Party ID';
         return;
     }
@@ -759,11 +761,11 @@ async function handleJoinParty(options = {}) {
         const query = new Parse.Query(Parties);
         let party = null;
 
-        if (effectivePartyId) {
+        if (resolvedPartyId) {
             try {
-                party = await query.get(effectivePartyId);
+                party = await query.get(resolvedPartyId);
             } catch (error) {
-                if (error && error.code === 101) {
+                if (error && error.code === PARSE_OBJECT_NOT_FOUND_ERROR_CODE) {
                     party = null;
                 } else {
                     throw error;
@@ -786,9 +788,9 @@ async function handleJoinParty(options = {}) {
         }
         
         if (!party) {
-            elements.joinError.textContent = effectivePartyId
+            elements.joinError.textContent = resolvedPartyId
                 ? PARTY_NOT_FOUND_OR_PASSWORD_INCORRECT
-                : 'Party not found';
+                : PARTY_NOT_FOUND;
             return;
         }
         

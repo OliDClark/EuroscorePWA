@@ -777,7 +777,7 @@ async function handleJoinParty() {
             const legacyQuery = new Parse.Query(Parties);
             legacyQuery.equalTo('Password', partyCode);
             const legacyParty = await legacyQuery.first();
-            if (legacyParty) {
+            if (legacyParty && partyPassword.toUpperCase() === partyCode) {
                 party = legacyParty;
             }
         }
@@ -832,14 +832,11 @@ async function joinPartyById(partyId, providedPassword = null) {
         const Parties = Parse.Object.extend('Parties');
         const query = new Parse.Query(Parties);
         const party = await query.get(partyId);
-        const partyCode = party.get('Code');
         const partyPassword = party.get('Password');
 
-        if (partyCode) {
-            if (!providedPassword || providedPassword !== partyPassword) {
-                elements.joinError.textContent = 'Party password is incorrect';
-                return;
-            }
+        if (!providedPassword || providedPassword !== partyPassword) {
+            elements.joinError.textContent = 'Party password is incorrect';
+            return;
         }
 
         // Check if already a guest
@@ -885,10 +882,8 @@ let isProcessingScan = false;
 function showQRModal(party) {
     const name = party.get('Name');
     const partyCode = party.get('Code') || party.get('Password');
-    const partyPassword = isLegacyParty(party) ? '' : (party.get('Password') || '');
-    const payload = partyPassword
-        ? `euroscore:party:${party.id}:${encodeURIComponent(partyPassword)}`
-        : `euroscore:party:${party.id}`;
+    const partyPassword = party.get('Password') || '';
+    const payload = `euroscore:party:${party.id}:${encodeURIComponent(partyPassword)}`;
 
     elements.qrModalTitle.textContent = name;
     elements.qrModalSubtitle.textContent = `Party Code: ${partyCode}`;
@@ -2160,10 +2155,6 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
-}
-
-function isLegacyParty(party) {
-    return !party.get('Code');
 }
 
 // Settings functions

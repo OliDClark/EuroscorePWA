@@ -913,7 +913,13 @@ async function onQRCodeScanned(decodedText) {
             return;
         }
 
-        elements.partyCodeInput.value = payload;
+        const partyCode = payload.trim();
+        if (!partyCode) {
+            elements.joinError.textContent = 'QR Code not recognised';
+            return;
+        }
+
+        elements.partyCodeInput.value = partyCode;
         await handleJoinParty();
     } finally {
         isProcessingScan = false;

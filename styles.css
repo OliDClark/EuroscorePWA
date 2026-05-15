@@ -661,6 +661,7 @@ body {
     padding: 20px;
     border-radius: 12px;
     box-shadow: var(--shadow);
+    position: relative;
 }
 
 .scoreboard h3 {
@@ -677,6 +678,39 @@ body {
     margin-bottom: 20px;
 }
 
+.main-scoreboard-controls {
+    position: absolute;
+    top: 52px;
+    right: 12px;
+    width: min(360px, calc(100% - 24px));
+    margin: 0;
+    padding: 10px;
+    border-radius: 10px;
+    background: rgba(10, 16, 30, 0.95);
+    backdrop-filter: blur(6px);
+    z-index: 20;
+}
+
+.main-scoreboard-controls .form-label {
+    color: #dbe8ff;
+}
+
+.main-scoreboard-settings-toggle {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: auto;
+    margin: 0;
+    padding: 7px 10px;
+    z-index: 25;
+}
+
+.main-scoreboard-settings-toggle.active {
+    background: #2b5ed7;
+    color: #fff;
+    border-color: #2b5ed7;
+}
+
 #main-scoreboard-context {
     display: none;
     margin-bottom: 15px;
@@ -689,6 +723,8 @@ body {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
+    height: calc(100vh - 148px);
+    min-height: 420px;
 }
 
 .main-scoreboard-panel {
@@ -696,6 +732,10 @@ body {
     padding: 12px;
     background: #f7f8fc;
     border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .main-scoreboard-panel-title {
@@ -705,9 +745,11 @@ body {
 }
 
 .main-scoreboard-rows {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr;
     gap: 8px;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .main-scoreboard-row {
@@ -791,6 +833,13 @@ body {
     margin-bottom: 6px;
 }
 
+.main-scoreboard-next-order {
+    font-size: 0.82rem;
+    color: #bcd5ff;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
 .main-scoreboard-next-country {
     font-size: 1rem;
     font-weight: 700;
@@ -805,33 +854,50 @@ body {
 
 .main-scoreboard-staging-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
     margin-top: 10px;
+    min-height: 0;
+    align-content: start;
+    grid-auto-flow: row;
 }
 
 .main-scoreboard-staging-country {
     border: 1px solid #ccd6eb;
     border-radius: 10px;
-    padding: 10px;
-    background: #fff;
+    padding: 8px;
+    background: linear-gradient(140deg, rgba(255, 255, 255, 0.95), rgba(236, 244, 255, 0.92));
+    position: relative;
+    overflow: hidden;
+}
+
+.main-scoreboard-staging-country::before {
+    content: attr(data-flag);
+    position: absolute;
+    right: -2px;
+    bottom: -14px;
+    font-size: 3rem;
+    opacity: 0.16;
+    line-height: 1;
+    pointer-events: none;
+}
+
+.main-scoreboard-staging-order {
+    font-size: 0.74rem;
+    color: #214fbe;
+    font-weight: 700;
 }
 
 .main-scoreboard-staging-country-name {
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 .main-scoreboard-staging-singer,
 .main-scoreboard-staging-song {
-    margin-top: 3px;
-    font-size: 0.8rem;
+    margin-top: 2px;
+    font-size: 0.75rem;
     color: var(--text-secondary);
-}
-
-.main-scoreboard-staging-country.is-next-performer {
-    border-color: #529eff;
-    box-shadow: 0 0 0 2px rgba(82, 158, 255, 0.3), 0 0 12px rgba(82, 158, 255, 0.65);
 }
 
 .score-item {
@@ -960,7 +1026,55 @@ body {
 
     .main-scoreboard-layout {
         grid-template-columns: 1fr;
+        height: calc(100vh - 150px);
     }
+
+    .main-scoreboard-controls {
+        top: 46px;
+        right: 10px;
+        width: calc(100% - 20px);
+    }
+}
+
+#main-screen.scoreboard-main-mode {
+    background: #030711;
+    overflow: hidden;
+}
+
+#main-screen.scoreboard-main-mode .navbar,
+#main-screen.scoreboard-main-mode .tabs {
+    display: none;
+}
+
+#main-screen.scoreboard-main-mode .container {
+    max-width: 100%;
+    padding: 0;
+}
+
+#main-screen.scoreboard-main-mode #scoreboard-main-tab {
+    display: block;
+}
+
+#main-screen.scoreboard-main-mode .scoreboard {
+    height: 100vh;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 10px 12px 12px;
+    background: #070f20;
+}
+
+#main-screen.scoreboard-main-mode .scoreboard h3 {
+    margin-bottom: 8px;
+    color: #f3f7ff;
+    text-align: left;
+    font-size: 1.35rem;
+}
+
+#main-screen.scoreboard-main-mode #main-scoreboard-context {
+    color: #d0e1ff;
+    text-align: left;
+    margin-bottom: 10px;
+    font-size: 1rem;
 }
 
 

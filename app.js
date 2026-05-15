@@ -99,6 +99,8 @@ const elements = {
     mainScoreboardPartySelect: document.getElementById('main-scoreboard-party-select'),
     mainScoreboardCompetitionSelect: document.getElementById('main-scoreboard-competition-select'),
     mainRefreshScoresBtn: document.getElementById('main-refresh-scores-btn'),
+    mainScoreboardSettingsToggle: document.getElementById('main-scoreboard-settings-toggle'),
+    mainScoreboardControls: document.getElementById('main-scoreboard-controls'),
     mainScoreboardContent: document.getElementById('main-scoreboard-content'),
     mainScoreboardContext: document.getElementById('main-scoreboard-context'),
     
@@ -298,6 +300,7 @@ function setupEventListeners() {
     elements.backToMainBtn.addEventListener('click', showMainScreen);
     elements.refreshScoresBtn.addEventListener('click', loadScoreboard);
     elements.mainRefreshScoresBtn.addEventListener('click', loadMainScoreboard);
+    elements.mainScoreboardSettingsToggle.addEventListener('click', toggleMainScoreboardControls);
     elements.mainScoreboardSourceSelect.addEventListener('change', handleMainScoreboardSourceChange);
     elements.mainScoreboardPartySelect.addEventListener('change', loadMainScoreboard);
     elements.mainScoreboardCompetitionSelect.addEventListener('change', loadMainScoreboard);
@@ -326,6 +329,8 @@ function setupEventListeners() {
 }
 
 function switchTab(tab) {
+    elements.mainScreen.classList.toggle('scoreboard-main-mode', tab === 'scoreboard-main');
+
     // Update buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tab);
@@ -588,7 +593,14 @@ function populateMainScoreboardCompetitionOptions() {
 function prepareMainScoreboardTab() {
     populateMainScoreboardPartyOptions();
     populateMainScoreboardCompetitionOptions();
+    elements.mainScoreboardControls.classList.add('hidden');
+    elements.mainScoreboardSettingsToggle.classList.remove('active');
     handleMainScoreboardSourceChange();
+}
+
+function toggleMainScoreboardControls() {
+    elements.mainScoreboardControls.classList.toggle('hidden');
+    elements.mainScoreboardSettingsToggle.classList.toggle('active', !elements.mainScoreboardControls.classList.contains('hidden'));
 }
 
 function handleMainScoreboardSourceChange() {
@@ -2000,16 +2012,17 @@ function animateMainScoreboardRows(container, countries) {
         }
 
         const nextPosition = row.getBoundingClientRect();
+        const deltaX = previousPosition.left - nextPosition.left;
         const deltaY = previousPosition.top - nextPosition.top;
-        if (!deltaY) {
+        if (!deltaX && !deltaY) {
             return;
         }
 
         row.style.transition = 'none';
-        row.style.transform = `translateY(${deltaY}px)`;
+        row.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
         requestAnimationFrame(() => {
             row.style.transition = `transform ${MAIN_SCOREBOARD_ANIMATION_DURATION_MS}ms ease`;
-            row.style.transform = 'translateY(0)';
+            row.style.transform = 'translate(0, 0)';
         });
         const cleanupRowAnimation = () => {
             row.style.transition = '';
@@ -2068,6 +2081,7 @@ function renderMainEurovisionScoreboard(scoreboardData) {
         nextPerformerContainer.innerHTML = `
             <div class="main-scoreboard-next-card">
                 <div class="main-scoreboard-next-label">Next to perform</div>
+                <div class="main-scoreboard-next-order">Running order #${nextPerformer.performanceOrder}</div>
                 <div class="main-scoreboard-next-country">${flag} ${escapeHtml(nextPerformer.countryName)}</div>
                 <div class="main-scoreboard-next-singer">${escapeHtml(nextPerformer.singer || MAIN_SCOREBOARD_SINGER_PLACEHOLDER)}</div>
                 <div class="main-scoreboard-next-song">${escapeHtml(nextPerformer.songTitle || MAIN_SCOREBOARD_SONG_PLACEHOLDER)}</div>
@@ -2077,17 +2091,21 @@ function renderMainEurovisionScoreboard(scoreboardData) {
         nextPerformerContainer.innerHTML = '<p class="loading">All countries have received votes.</p>';
     }
 
-    if (!unvotedCountries || unvotedCountries.length === 0) {
+    const stagingCountries = (unvotedCountries || []).filter(country => {
+        return !nextPerformer || country.countryName !== nextPerformer.countryName;
+    });
+
+    if (!stagingCountries.length) {
         stagingGridContainer.innerHTML = '<p class="loading">No countries waiting to perform.</p>';
         return;
     }
 
-    stagingGridContainer.innerHTML = unvotedCountries.map(country => {
+    stagingGridContainer.innerHTML = stagingCountries.map(country => {
         const flag = country.countryCode ? getCountryFlag(country.countryCode) : '🏳️';
-        const isNext = nextPerformer && nextPerformer.countryName === country.countryName;
         return `
-            <div class="main-scoreboard-staging-country${isNext ? ' is-next-performer' : ''}">
-                <div class="main-scoreboard-staging-country-name">${flag} ${escapeHtml(country.countryName)}</div>
+            <div class="main-scoreboard-staging-country" data-flag="${flag}">
+                <div class="main-scoreboard-staging-order">#${country.performanceOrder}</div>
+                <div class="main-scoreboard-staging-country-name">${escapeHtml(country.countryName)}</div>
                 <div class="main-scoreboard-staging-singer">${escapeHtml(country.singer || MAIN_SCOREBOARD_SINGER_PLACEHOLDER)}</div>
                 <div class="main-scoreboard-staging-song">${escapeHtml(country.songTitle || MAIN_SCOREBOARD_SONG_PLACEHOLDER)}</div>
             </div>

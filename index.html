@@ -121,7 +121,10 @@
                 <div id="scoreboard-main-tab" class="tab-content hidden">
                     <div class="scoreboard">
                         <h3>🏆 Eurovision Scoreboard</h3>
-                        <button id="main-scoreboard-settings-toggle" class="btn btn-small main-scoreboard-settings-toggle" type="button">⚙️</button>
+                        <div class="main-scoreboard-action-buttons">
+                            <button id="main-refresh-scores-btn" class="btn btn-small main-scoreboard-refresh-toggle" type="button" aria-label="Refresh scoreboard" title="Refresh scoreboard">⟳</button>
+                            <button id="main-scoreboard-settings-toggle" class="btn btn-small main-scoreboard-settings-toggle" type="button" aria-label="Scoreboard settings" title="Scoreboard settings">⚙️</button>
+                        </div>
 
                         <div id="main-scoreboard-controls" class="form-group scoreboard-selector-group main-scoreboard-controls hidden">
                             <div class="form-label">Scoreboard source</div>
@@ -144,8 +147,6 @@
                                     <option value="">Select a competition...</option>
                                 </select>
                             </div>
-
-                            <button id="main-refresh-scores-btn" class="btn btn-secondary">Refresh Scoreboard</button>
                         </div>
 
                         <p id="main-scoreboard-context" class="competition-info"></p>

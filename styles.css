@@ -780,8 +780,8 @@ body {
     --main-scoreboard-country-font-size: 1.8rem;
     --main-scoreboard-meta-font-size: 0.8rem;
     --main-scoreboard-meta-line-height: 0.9rem;
-    --main-scoreboard-points-width: 46px;
-    --main-scoreboard-points-font-size: 1.2rem;
+    --main-scoreboard-points-width: 56px;
+    --main-scoreboard-points-font-size: 1rem;
     --main-scoreboard-points-padding-y: 4px;
     --main-scoreboard-points-padding-x: 8px;
     display: grid;
@@ -819,6 +819,7 @@ body {
     display: flex;
     align-items: center;
     overflow: hidden;
+    padding-right: calc(var(--main-scoreboard-row-inner-gap) * 2);
 }
 
 .main-scoreboard-country-meta-row {
@@ -961,11 +962,11 @@ body {
     --main-staging-padding-left: 8px;
     --main-staging-flag-space: 70px;
     --main-staging-flag-right: 8px;
-    --main-staging-flag-size: 56px;
-    --main-staging-flag-font-size: 2rem;
+    --main-staging-flag-size: 118px;
+    --main-staging-flag-font-size: 3.5rem;
     --main-staging-order-font-size: 0.74rem;
-    --main-staging-country-font-size: 0.9rem;
-    --main-staging-meta-font-size: 0.75rem;
+    --main-staging-country-font-size: 1.8rem;
+    --main-staging-meta-font-size: 1.125rem;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-rows: var(--main-staging-tile-height);

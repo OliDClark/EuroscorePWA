@@ -2104,8 +2104,8 @@ function applyMainScoreboardRowSizing(container) {
     container.style.setProperty('--main-scoreboard-country-font-size', `${Math.round(rowHeight * 0.66)}px`);
     container.style.setProperty('--main-scoreboard-meta-font-size', `${Math.max(9, Math.round(rowHeight * 0.3))}px`);
     container.style.setProperty('--main-scoreboard-meta-line-height', `${Math.max(10, Math.round(rowHeight * 0.31))}px`);
-    container.style.setProperty('--main-scoreboard-points-width', `${Math.round(rowHeight * 0.78)}px`);
-    container.style.setProperty('--main-scoreboard-points-font-size', `${Math.round(rowHeight * 0.48)}px`);
+    container.style.setProperty('--main-scoreboard-points-width', `${Math.round(rowHeight * 0.95)}px`);
+    container.style.setProperty('--main-scoreboard-points-font-size', `${Math.round(rowHeight * 0.38)}px`);
     container.style.setProperty('--main-scoreboard-points-padding-y', `${Math.max(2, Math.round(2 + (compactness * 2)))}px`);
     container.style.setProperty('--main-scoreboard-points-padding-x', `${Math.max(4, Math.round(4 + (compactness * 4)))}px`);
 }
@@ -2137,7 +2137,7 @@ function applyMainStagingTileSizing(container) {
         0,
         1
     );
-    const flagSize = Math.round(28 + (compactness * 28));
+    const flagSize = tileHeight - 4;
     const flagOffset = Math.round(6 + (compactness * 2));
     const flagSpace = flagSize + flagOffset + 10;
 
@@ -2148,10 +2148,10 @@ function applyMainStagingTileSizing(container) {
     container.style.setProperty('--main-staging-flag-space', `${flagSpace}px`);
     container.style.setProperty('--main-staging-flag-right', `${flagOffset}px`);
     container.style.setProperty('--main-staging-flag-size', `${flagSize}px`);
-    container.style.setProperty('--main-staging-flag-font-size', `${(1 + (compactness * 1)).toFixed(2)}rem`);
+    container.style.setProperty('--main-staging-flag-font-size', `${Math.round(flagSize * 0.72)}px`);
     container.style.setProperty('--main-staging-order-font-size', `${(0.5 + (compactness * 0.24)).toFixed(2)}rem`);
-    container.style.setProperty('--main-staging-country-font-size', `${(0.62 + (compactness * 0.28)).toFixed(2)}rem`);
-    container.style.setProperty('--main-staging-meta-font-size', `${(0.5 + (compactness * 0.25)).toFixed(2)}rem`);
+    container.style.setProperty('--main-staging-country-font-size', `${(1.24 + (compactness * 0.56)).toFixed(2)}rem`);
+    container.style.setProperty('--main-staging-meta-font-size', `${(0.75 + (compactness * 0.375)).toFixed(2)}rem`);
 }
 
 function recalculateMainScoreboardCellSizing() {

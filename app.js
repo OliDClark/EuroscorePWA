@@ -2306,9 +2306,17 @@ async function renderMainEurovisionScoreboard(scoreboardData, { runRefreshAnimat
         nextPerformerContainer.innerHTML = `
             <div class="main-scoreboard-next-card">
                 <div class="main-scoreboard-next-label">Next to perform</div>
-                <div class="main-scoreboard-next-order">Running order #${nextPerformer.performanceOrder}</div>
-                <div class="main-scoreboard-next-country">${flag} ${escapeHtml(nextPerformer.countryName)}</div>
-                <div class="main-scoreboard-next-meta">${escapeHtml(nextPerformer.singer || MAIN_SCOREBOARD_SINGER_PLACEHOLDER)} • ${escapeHtml(nextPerformer.songTitle || MAIN_SCOREBOARD_SONG_PLACEHOLDER)}</div>
+                <div class="main-scoreboard-next-row">
+                    <div class="main-scoreboard-next-order">${nextPerformer.performanceOrder}</div>
+                    <div class="main-scoreboard-next-flag" aria-hidden="true">${flag}</div>
+                    <div class="main-scoreboard-next-details">
+                        <div class="main-scoreboard-next-country">${escapeHtml(nextPerformer.countryName)}</div>
+                        <div class="main-scoreboard-next-artist-stack">
+                            <div class="main-scoreboard-next-singer">${escapeHtml(nextPerformer.singer || MAIN_SCOREBOARD_SINGER_PLACEHOLDER)}</div>
+                            <div class="main-scoreboard-next-song">${escapeHtml(nextPerformer.songTitle || MAIN_SCOREBOARD_SONG_PLACEHOLDER)}</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
     } else {

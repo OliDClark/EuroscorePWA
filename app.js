@@ -1982,7 +1982,9 @@ function animateMainScoreboardRows(container, countries) {
         const previousPosition = previousPositions.get(row.dataset.country);
         if (!previousPosition) {
             row.classList.add('main-scoreboard-row-new');
-            requestAnimationFrame(() => row.classList.remove('main-scoreboard-row-new'));
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => row.classList.remove('main-scoreboard-row-new'));
+            });
             return;
         }
 
@@ -1997,6 +1999,14 @@ function animateMainScoreboardRows(container, countries) {
         requestAnimationFrame(() => {
             row.style.transition = 'transform 450ms ease';
             row.style.transform = 'translateY(0)';
+        });
+        row.addEventListener('transitionend', function handleTransitionEnd(event) {
+            if (event.propertyName !== 'transform') {
+                return;
+            }
+            row.style.transition = '';
+            row.style.transform = '';
+            row.removeEventListener('transitionend', handleTransitionEnd);
         });
     });
 }

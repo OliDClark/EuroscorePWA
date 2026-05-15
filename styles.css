@@ -724,6 +724,7 @@ body {
 
 .main-scoreboard-row-new {
     opacity: 0;
+    transition: opacity 450ms ease;
 }
 
 .main-scoreboard-country-block {

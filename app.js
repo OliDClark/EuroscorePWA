@@ -1739,7 +1739,7 @@ async function loadMainScoreboard() {
         return;
     }
 
-    const refreshButtonLabel = 'Refresh Scoreboard';
+    const refreshButtonLabel = elements.mainRefreshScoresBtn.textContent;
     elements.mainRefreshScoresBtn.disabled = true;
     elements.mainRefreshScoresBtn.textContent = 'Refreshing...';
 
@@ -2002,7 +2002,7 @@ function animateMainScoreboardRows(container, countries) {
             return;
         }
 
-        row.style.transition = 'transform 0ms';
+        row.style.transition = 'none';
         row.style.transform = `translateY(${deltaY}px)`;
         requestAnimationFrame(() => {
             row.style.transition = `transform ${MAIN_SCOREBOARD_ANIMATION_DURATION_MS}ms ease`;

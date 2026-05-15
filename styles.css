@@ -773,7 +773,7 @@ body {
     --main-scoreboard-row-padding-y: 10px;
     --main-scoreboard-row-padding-x: 12px;
     --main-scoreboard-row-inner-gap: 10px;
-    --main-scoreboard-rank-width: 22px;
+    --main-scoreboard-rank-width: 56px;
     --main-scoreboard-rank-font-size: 2rem;
     --main-scoreboard-flag-size: 48px;
     --main-scoreboard-flag-font-size: 2rem;
@@ -818,18 +818,22 @@ body {
     min-width: 0;
     display: flex;
     align-items: center;
+    overflow: hidden;
 }
 
 .main-scoreboard-country-meta-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--main-scoreboard-row-inner-gap);
     width: 100%;
 }
 
 .main-scoreboard-rank {
     color: #9aa0a6;
+    width: var(--main-scoreboard-rank-width);
     min-width: var(--main-scoreboard-rank-width);
+    flex: 0 0 var(--main-scoreboard-rank-width);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -842,6 +846,7 @@ body {
 .main-scoreboard-flag {
     width: var(--main-scoreboard-flag-size);
     min-width: var(--main-scoreboard-flag-size);
+    flex: 0 0 var(--main-scoreboard-flag-size);
     height: var(--main-scoreboard-flag-size);
     align-self: center;
     border-radius: 50%;
@@ -854,6 +859,8 @@ body {
 }
 
 .main-scoreboard-country {
+    flex: 1 1 auto;
+    min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -866,6 +873,10 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    align-items: flex-end;
+    text-align: right;
+    margin-left: auto;
+    flex: 0 1 44%;
     min-width: 0;
 }
 
@@ -888,6 +899,7 @@ body {
     color: #fff;
     border-radius: 6px;
     min-width: var(--main-scoreboard-points-width);
+    flex: 0 0 var(--main-scoreboard-points-width);
     display: flex;
     align-items: center;
     justify-content: center;

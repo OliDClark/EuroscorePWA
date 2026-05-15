@@ -2096,7 +2096,7 @@ function applyMainScoreboardRowSizing(container) {
     container.style.setProperty('--main-scoreboard-row-padding-y', `${Math.round(4 + (compactness * 6))}px`);
     container.style.setProperty('--main-scoreboard-row-padding-x', `${Math.round(6 + (compactness * 6))}px`);
     container.style.setProperty('--main-scoreboard-row-inner-gap', `${Math.round(5 + (compactness * 5))}px`);
-    container.style.setProperty('--main-scoreboard-rank-width', `${Math.round(rowHeight * 0.34)}px`);
+    container.style.setProperty('--main-scoreboard-rank-width', `${Math.max(34, Math.round(rowHeight * 0.92))}px`);
     container.style.setProperty('--main-scoreboard-rank-font-size', `${Math.round(rowHeight * 0.7)}px`);
     const flagSize = Math.max(20, rowHeight - (Math.round(4 + (compactness * 6)) * 2) - 2);
     container.style.setProperty('--main-scoreboard-flag-size', `${flagSize}px`);

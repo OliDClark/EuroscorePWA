@@ -13,6 +13,7 @@ console.log('Parse Config:', PARSE_CONFIG);
 const APP_VERSION = 'v1.0.5';
 const SCOREBOARD_QUERY_LIMIT = 10000;
 const EUROVISION_POINTS_MULTIPLIER = 116;
+const MAIN_SCOREBOARD_ANIMATION_DURATION_MS = 450;
 const PARSE_OBJECT_NOT_FOUND_ERROR_CODE = 101;
 const PARTY_NOT_FOUND = 'Party not found';
 const PARTY_NOT_FOUND_OR_PASSWORD_INCORRECT = 'Party not found or password incorrect';
@@ -1982,7 +1983,7 @@ function animateMainScoreboardRows(container, countries) {
         const previousPosition = previousPositions.get(row.dataset.country);
         if (!previousPosition) {
             row.classList.add('main-scoreboard-row-new');
-            setTimeout(() => row.classList.remove('main-scoreboard-row-new'), 10);
+            requestAnimationFrame(() => row.classList.remove('main-scoreboard-row-new'));
             return;
         }
 
@@ -1992,10 +1993,10 @@ function animateMainScoreboardRows(container, countries) {
             return;
         }
 
-        row.style.transition = 'transform 0s';
+        row.style.transition = 'transform 0ms';
         row.style.transform = `translateY(${deltaY}px)`;
         requestAnimationFrame(() => {
-            row.style.transition = 'transform 450ms ease';
+            row.style.transition = `transform ${MAIN_SCOREBOARD_ANIMATION_DURATION_MS}ms ease`;
             row.style.transform = 'translateY(0)';
         });
         row.addEventListener('transitionend', function handleTransitionEnd(event) {

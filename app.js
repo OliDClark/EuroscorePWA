@@ -2083,8 +2083,7 @@ function renderMainEurovisionScoreboard(scoreboardData) {
                 <div class="main-scoreboard-next-label">Next to perform</div>
                 <div class="main-scoreboard-next-order">Running order #${nextPerformer.performanceOrder}</div>
                 <div class="main-scoreboard-next-country">${flag} ${escapeHtml(nextPerformer.countryName)}</div>
-                <div class="main-scoreboard-next-singer">${escapeHtml(nextPerformer.singer || MAIN_SCOREBOARD_SINGER_PLACEHOLDER)}</div>
-                <div class="main-scoreboard-next-song">${escapeHtml(nextPerformer.songTitle || MAIN_SCOREBOARD_SONG_PLACEHOLDER)}</div>
+                <div class="main-scoreboard-next-meta">${escapeHtml(nextPerformer.singer || MAIN_SCOREBOARD_SINGER_PLACEHOLDER)} • ${escapeHtml(nextPerformer.songTitle || MAIN_SCOREBOARD_SONG_PLACEHOLDER)}</div>
             </div>
         `;
     } else {

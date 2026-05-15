@@ -1728,7 +1728,9 @@ async function refreshSongVoteDisplay(songId, voteValue) {
 
 async function loadMainScoreboard() {
     const sourceType = elements.mainScoreboardSourceSelect.value;
-    elements.mainScoreboardContent.innerHTML = '<p class="loading">Loading rankings...</p>';
+    if (!elements.mainScoreboardContent.querySelector('.main-scoreboard-layout')) {
+        elements.mainScoreboardContent.innerHTML = '<p class="loading">Loading rankings...</p>';
+    }
     elements.mainScoreboardContext.style.display = 'none';
 
     if (!sourceType) {
@@ -1739,7 +1741,8 @@ async function loadMainScoreboard() {
     try {
         let songs = [];
         let votes = [];
-        let contextLabel = '';
+        let partyLabel = '';
+        let stageLabel = '';
 
         if (sourceType === 'party') {
             const partyId = elements.mainScoreboardPartySelect.value;
@@ -1762,7 +1765,8 @@ async function loadMainScoreboard() {
 
             songs = await fetchSongsForCompetition(competition);
             votes = await fetchScoreboardVotes({ partyId });
-            contextLabel = `Party: ${party.get('Name') || 'Unnamed Party'} • ${getCompetitionLabel(competition)}`;
+            partyLabel = `Party: ${party.get('Name') || 'Unnamed Party'}`;
+            stageLabel = `Stage: ${getCompetitionLabel(competition)}`;
         } else if (sourceType === 'competition') {
             const competitionId = elements.mainScoreboardCompetitionSelect.value;
             if (!competitionId) {
@@ -1779,12 +1783,14 @@ async function loadMainScoreboard() {
 
             songs = await fetchSongsForCompetition(competition);
             votes = await fetchScoreboardVotes({ competitionId });
-            contextLabel = `Competition: ${getCompetitionLabel(competition)}`;
+            partyLabel = 'Party: All Parties';
+            stageLabel = `Stage: ${getCompetitionLabel(competition)}`;
         }
 
-        const rankings = buildCountryRankings(votes, songs);
-        renderMainEurovisionScoreboard(rankings);
+        const scoreboardData = buildMainScoreboardData(votes, songs);
+        renderMainEurovisionScoreboard(scoreboardData);
 
+        const contextLabel = [partyLabel, stageLabel].filter(Boolean).join(' • ');
         elements.mainScoreboardContext.textContent = contextLabel;
         elements.mainScoreboardContext.style.display = contextLabel ? 'block' : 'none';
     } catch (error) {
@@ -1901,37 +1907,159 @@ function buildCountryRankings(votes, songs) {
     return rankings;
 }
 
-function renderMainEurovisionScoreboard(rankings) {
-    if (!rankings || rankings.length === 0) {
+function buildMainScoreboardData(votes, songs) {
+    const rankings = buildCountryRankings(votes, songs);
+    const rankingByCountry = new Map(rankings.map(country => [country.countryName, country]));
+    const countriesByOrder = [];
+    const countryMap = new Map();
+
+    (songs || []).forEach((song, index) => {
+        const countryName = song.get('countryName') || song.get('CountryName') || 'Unknown';
+        if (countryMap.has(countryName)) {
+            return;
+        }
+
+        const country = {
+            countryName,
+            countryCode: song.get('countryCode') || song.get('CountryCode') || '',
+            singer: song.get('singer') || song.get('Singer') || '',
+            songTitle: song.get('song') || song.get('Song') || '',
+            performanceOrder: index + 1
+        };
+
+        countryMap.set(countryName, country);
+        countriesByOrder.push(country);
+    });
+
+    const votedCountries = rankings.filter(country => country.totalVotes > 0);
+    const unvotedCountries = countriesByOrder.filter(country => {
+        const rankedCountry = rankingByCountry.get(country.countryName);
+        return !rankedCountry || rankedCountry.totalVotes === 0;
+    });
+
+    return {
+        votedCountries,
+        unvotedCountries,
+        nextPerformer: unvotedCountries[0] || null
+    };
+}
+
+function renderMainScoreboardRows(countries) {
+    if (!countries || countries.length === 0) {
+        return '<p class="loading">No countries have received votes yet.</p>';
+    }
+
+    return countries.map((country, index) => {
+        const flag = country.countryCode ? getCountryFlag(country.countryCode) : '🏳️';
+        const singer = escapeHtml(country.singer || 'Singer TBC');
+        const songTitle = escapeHtml(country.songTitle || 'Song TBC');
+
+        return `
+            <div class="main-scoreboard-row" data-country="${escapeHtml(country.countryName)}">
+                <div class="main-scoreboard-rank">${index + 1}</div>
+                <div class="main-scoreboard-country-block">
+                    <div class="main-scoreboard-country-line">
+                        <span class="main-scoreboard-flag">${flag}</span>
+                        <span class="main-scoreboard-country">${escapeHtml(country.countryName)}</span>
+                    </div>
+                    <div class="main-scoreboard-songline">${singer} • ${songTitle}</div>
+                </div>
+                <div class="main-scoreboard-points">${country.points || 0}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function animateMainScoreboardRows(container, countries) {
+    const previousPositions = new Map();
+    container.querySelectorAll('.main-scoreboard-row').forEach(row => {
+        previousPositions.set(row.dataset.country, row.getBoundingClientRect());
+    });
+
+    container.innerHTML = renderMainScoreboardRows(countries);
+
+    container.querySelectorAll('.main-scoreboard-row').forEach(row => {
+        const previousPosition = previousPositions.get(row.dataset.country);
+        if (!previousPosition) {
+            row.classList.add('main-scoreboard-row-new');
+            requestAnimationFrame(() => row.classList.remove('main-scoreboard-row-new'));
+            return;
+        }
+
+        const nextPosition = row.getBoundingClientRect();
+        const deltaY = previousPosition.top - nextPosition.top;
+        if (!deltaY) {
+            return;
+        }
+
+        row.style.transition = 'transform 0s';
+        row.style.transform = `translateY(${deltaY}px)`;
+        requestAnimationFrame(() => {
+            row.style.transition = 'transform 450ms ease';
+            row.style.transform = 'translateY(0)';
+        });
+    });
+}
+
+function renderMainEurovisionScoreboard(scoreboardData) {
+    const { votedCountries, unvotedCountries, nextPerformer } = scoreboardData || {};
+    if (!scoreboardData) {
         elements.mainScoreboardContent.innerHTML = '<p class="loading">No song votes found for this selection.</p>';
         return;
     }
 
-    const midpoint = Math.ceil(rankings.length / 2);
-    const left = rankings.slice(0, midpoint);
-    const right = rankings.slice(midpoint);
+    if (!elements.mainScoreboardContent.querySelector('.main-scoreboard-layout')) {
+        elements.mainScoreboardContent.innerHTML = `
+        <div class="main-scoreboard-layout">
+            <div class="main-scoreboard-panel main-scoreboard-panel-left">
+                <h4 class="main-scoreboard-panel-title">Scoreboard</h4>
+                <div class="main-scoreboard-rows"></div>
+            </div>
+            <div class="main-scoreboard-panel main-scoreboard-panel-right">
+                <h4 class="main-scoreboard-panel-title">Staging Area</h4>
+                <div class="main-scoreboard-next-performer"></div>
+                <div class="main-scoreboard-staging-grid"></div>
+            </div>
+        </div>
+        `;
+    }
 
-    const renderRows = (rows, offset) => rows.map((country, index) => {
-        const rank = offset + index + 1;
+    const rowsContainer = elements.mainScoreboardContent.querySelector('.main-scoreboard-rows');
+    const nextPerformerContainer = elements.mainScoreboardContent.querySelector('.main-scoreboard-next-performer');
+    const stagingGridContainer = elements.mainScoreboardContent.querySelector('.main-scoreboard-staging-grid');
+
+    animateMainScoreboardRows(rowsContainer, votedCountries);
+
+    if (nextPerformer) {
+        const flag = nextPerformer.countryCode ? getCountryFlag(nextPerformer.countryCode) : '🏳️';
+        nextPerformerContainer.innerHTML = `
+            <div class="main-scoreboard-next-card">
+                <div class="main-scoreboard-next-label">Next to perform</div>
+                <div class="main-scoreboard-next-country">${flag} ${escapeHtml(nextPerformer.countryName)}</div>
+                <div class="main-scoreboard-next-song">${escapeHtml(nextPerformer.singer || 'Singer TBC')}</div>
+                <div class="main-scoreboard-next-song">${escapeHtml(nextPerformer.songTitle || 'Song TBC')}</div>
+            </div>
+        `;
+    } else {
+        nextPerformerContainer.innerHTML = '<p class="loading">All countries have received votes.</p>';
+    }
+
+    if (!unvotedCountries || unvotedCountries.length === 0) {
+        stagingGridContainer.innerHTML = '<p class="loading">No countries waiting to perform.</p>';
+        return;
+    }
+
+    stagingGridContainer.innerHTML = unvotedCountries.map(country => {
         const flag = country.countryCode ? getCountryFlag(country.countryCode) : '🏳️';
+        const isNext = nextPerformer && nextPerformer.countryName === country.countryName;
         return `
-            <div class="eurovision-score-row">
-                <div class="eurovision-score-country">
-                    <span class="eurovision-score-rank">${rank}</span>
-                    <span class="eurovision-score-flag">${flag}</span>
-                    <span class="eurovision-score-name">${escapeHtml(country.countryName)}</span>
-                </div>
-                <div class="eurovision-score-points">${country.points}</div>
+            <div class="main-scoreboard-staging-country${isNext ? ' is-next-performer' : ''}">
+                <div class="main-scoreboard-staging-country-name">${flag} ${escapeHtml(country.countryName)}</div>
+                <div class="main-scoreboard-staging-singer">${escapeHtml(country.singer || 'Singer TBC')}</div>
+                <div class="main-scoreboard-staging-song">${escapeHtml(country.songTitle || 'Song TBC')}</div>
             </div>
         `;
     }).join('');
-
-    elements.mainScoreboardContent.innerHTML = `
-        <div class="eurovision-scoreboard-grid">
-            <div class="eurovision-scoreboard-column">${renderRows(left, 0)}</div>
-            <div class="eurovision-scoreboard-column">${renderRows(right, midpoint)}</div>
-        </div>
-    `;
 }
 
 async function loadScoreboard() {

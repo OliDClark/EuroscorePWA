@@ -681,21 +681,36 @@ body {
     display: none;
     margin-bottom: 15px;
     font-size: 1.2rem;
+    text-align: center;
+    font-weight: 600;
 }
 
-.eurovision-scoreboard-grid {
+.main-scoreboard-layout {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
 }
 
-.eurovision-scoreboard-column {
+.main-scoreboard-panel {
+    border-radius: 10px;
+    padding: 12px;
+    background: #f7f8fc;
+    border: 1px solid var(--border-color);
+}
+
+.main-scoreboard-panel-title {
+    margin-bottom: 10px;
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.main-scoreboard-rows {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.eurovision-score-row {
+.main-scoreboard-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -704,34 +719,52 @@ body {
     border-radius: 8px;
     background: #0b0f1a;
     color: #fff;
+    transform: translateY(0);
 }
 
-.eurovision-score-country {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.main-scoreboard-row-new {
+    opacity: 0;
+}
+
+.main-scoreboard-country-block {
+    flex: 1;
     min-width: 0;
 }
 
-.eurovision-score-rank {
+.main-scoreboard-country-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.main-scoreboard-rank {
     color: #9aa0a6;
     min-width: 22px;
     text-align: right;
     font-weight: 600;
 }
 
-.eurovision-score-flag {
+.main-scoreboard-flag {
     font-size: 1.2rem;
 }
 
-.eurovision-score-name {
+.main-scoreboard-country {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     font-weight: 600;
 }
 
-.eurovision-score-points {
+.main-scoreboard-songline {
+    margin-top: 3px;
+    font-size: 0.8rem;
+    color: #d1d7e0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.main-scoreboard-points {
     background: #2b5ed7;
     color: #fff;
     border-radius: 6px;
@@ -739,6 +772,64 @@ body {
     text-align: center;
     font-weight: 700;
     padding: 4px 8px;
+}
+
+.main-scoreboard-next-card {
+    border-radius: 10px;
+    padding: 12px;
+    background: #141d33;
+    color: #fff;
+    box-shadow: 0 0 0 2px rgba(82, 158, 255, 0.7), 0 0 16px rgba(82, 158, 255, 0.8);
+}
+
+.main-scoreboard-next-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #dbe8ff;
+    margin-bottom: 6px;
+}
+
+.main-scoreboard-next-country {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.main-scoreboard-next-song {
+    font-size: 0.9rem;
+    color: #e9f0ff;
+}
+
+.main-scoreboard-staging-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.main-scoreboard-staging-country {
+    border: 1px solid #ccd6eb;
+    border-radius: 10px;
+    padding: 10px;
+    background: #fff;
+}
+
+.main-scoreboard-staging-country-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.main-scoreboard-staging-singer,
+.main-scoreboard-staging-song {
+    margin-top: 3px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.main-scoreboard-staging-country.is-next-performer {
+    border-color: #529eff;
+    box-shadow: 0 0 0 2px rgba(82, 158, 255, 0.3), 0 0 12px rgba(82, 158, 255, 0.65);
 }
 
 .score-item {
@@ -865,7 +956,7 @@ body {
         gap: 5px;
     }
 
-    .eurovision-scoreboard-grid {
+    .main-scoreboard-layout {
         grid-template-columns: 1fr;
     }
 }

@@ -1982,9 +1982,7 @@ function animateMainScoreboardRows(container, countries) {
         const previousPosition = previousPositions.get(row.dataset.country);
         if (!previousPosition) {
             row.classList.add('main-scoreboard-row-new');
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => row.classList.remove('main-scoreboard-row-new'));
-            });
+            setTimeout(() => row.classList.remove('main-scoreboard-row-new'), 10);
             return;
         }
 
@@ -2046,7 +2044,7 @@ function renderMainEurovisionScoreboard(scoreboardData) {
             <div class="main-scoreboard-next-card">
                 <div class="main-scoreboard-next-label">Next to perform</div>
                 <div class="main-scoreboard-next-country">${flag} ${escapeHtml(nextPerformer.countryName)}</div>
-                <div class="main-scoreboard-next-song">${escapeHtml(nextPerformer.singer || 'Singer TBC')}</div>
+                <div class="main-scoreboard-next-singer">${escapeHtml(nextPerformer.singer || 'Singer TBC')}</div>
                 <div class="main-scoreboard-next-song">${escapeHtml(nextPerformer.songTitle || 'Song TBC')}</div>
             </div>
         `;

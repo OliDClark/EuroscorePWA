@@ -1975,6 +1975,22 @@ function renderMainScoreboardRows(countries) {
     }
 
     return countries.map((country, index) => {
+        if (!country) {
+            return `
+                <div class="main-scoreboard-row main-scoreboard-row-placeholder" data-slot="${index + 1}">
+                    <div class="main-scoreboard-rank main-scoreboard-rank-placeholder">${index + 1}</div>
+                    <div class="main-scoreboard-flag main-scoreboard-flag-placeholder" aria-hidden="true">🏁</div>
+                    <div class="main-scoreboard-country-block">
+                        <div class="main-scoreboard-country-line">
+                            <span class="main-scoreboard-country main-scoreboard-country-placeholder">Waiting for votes</span>
+                        </div>
+                        <div class="main-scoreboard-songline main-scoreboard-songline-placeholder">This slot will populate when a country receives points.</div>
+                    </div>
+                    <div class="main-scoreboard-points main-scoreboard-points-placeholder">--</div>
+                </div>
+            `;
+        }
+
         const flag = country.countryCode ? getCountryFlag(country.countryCode) : '🏳️';
         const singer = escapeHtml(country.singer || MAIN_SCOREBOARD_SINGER_PLACEHOLDER);
         const songTitle = escapeHtml(country.songTitle || MAIN_SCOREBOARD_SONG_PLACEHOLDER);
@@ -2038,7 +2054,7 @@ function wait(ms) {
 
 async function animateMainScoreboardRows(container, countries, durationMs) {
     const previousPositions = new Map();
-    container.querySelectorAll('.main-scoreboard-row').forEach(row => {
+    container.querySelectorAll('.main-scoreboard-row[data-country]').forEach(row => {
         previousPositions.set(row.dataset.country, row.getBoundingClientRect());
     });
 
@@ -2047,7 +2063,7 @@ async function animateMainScoreboardRows(container, countries, durationMs) {
         return;
     }
 
-    container.querySelectorAll('.main-scoreboard-row').forEach(row => {
+    container.querySelectorAll('.main-scoreboard-row[data-country]').forEach(row => {
         const previousPosition = previousPositions.get(row.dataset.country);
         if (!previousPosition) {
             row.classList.add('main-scoreboard-row-new');
@@ -2165,7 +2181,12 @@ async function renderMainEurovisionScoreboard(scoreboardData, { runRefreshAnimat
         ...country,
         rank: index + 1
     }));
-    const orderedVotedCountries = arrangeForVerticalColumns(rankedVotedCountries);
+    const totalCompetingCountries = (votedCountries || []).length + (unvotedCountries || []).length;
+    const scoreboardSlots = [
+        ...rankedVotedCountries,
+        ...Array.from({ length: Math.max(totalCompetingCountries - rankedVotedCountries.length, 0) }, () => null)
+    ];
+    const orderedScoreboardSlots = arrangeForVerticalColumns(scoreboardSlots);
 
     if (nextPerformer) {
         const flag = nextPerformer.countryCode ? getCountryFlag(nextPerformer.countryCode) : '🏳️';
@@ -2187,12 +2208,12 @@ async function renderMainEurovisionScoreboard(scoreboardData, { runRefreshAnimat
     const orderedStagingCountries = arrangeForVerticalColumns(stagingCountries);
 
     if (runRefreshAnimation) {
-        await animateMainScoreboardRows(rowsContainer, orderedVotedCountries, MAIN_SCOREBOARD_ANIMATION_DURATION_MS);
+        await animateMainScoreboardRows(rowsContainer, orderedScoreboardSlots, MAIN_SCOREBOARD_ANIMATION_DURATION_MS);
         await animateMainStagingRows(stagingGridContainer, orderedStagingCountries, MAIN_SCOREBOARD_ANIMATION_DURATION_MS);
         return;
     }
 
-    rowsContainer.innerHTML = renderMainScoreboardRows(orderedVotedCountries);
+    rowsContainer.innerHTML = renderMainScoreboardRows(orderedScoreboardSlots);
     stagingGridContainer.innerHTML = renderMainStagingRows(orderedStagingCountries);
 }
 

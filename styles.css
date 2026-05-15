@@ -892,9 +892,12 @@ body {
     grid-auto-rows: var(--main-staging-tile-height);
     gap: 8px;
     margin-top: 10px;
+    flex: 1;
     min-height: 0;
     align-content: start;
     grid-auto-flow: row;
+    overflow-y: auto;
+    padding-right: 2px;
 }
 
 .main-scoreboard-staging-country {

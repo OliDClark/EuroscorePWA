@@ -1350,14 +1350,19 @@ function showNormalVotingInterface() {
 // Show the counter voting interface with +/- buttons (when GuestVoting is false)
 async function showCounterVotingInterface(song) {
     // Load stored votes for this specific song to drive submit/update state
-    const existingVotes = state.songVotesMap[song.id] || { up: 0, mid: 0, down: 0 };
+    const songVotes = state.songVotesMap[song.id] || {};
+    const existingVotes = {
+        up: songVotes.up || 0,
+        mid: songVotes.mid || 0,
+        down: songVotes.down || 0
+    };
     const votes = { ...existingVotes };
     state.pendingCounterVotes = votes;
     state.existingCounterVotes = existingVotes;
     
     const voteButtonsContainer = document.querySelector('.vote-buttons');
     if (voteButtonsContainer) {
-        const hasExistingVotes = (existingVotes.up || 0) > 0 || (existingVotes.mid || 0) > 0 || (existingVotes.down || 0) > 0;
+        const hasExistingVotes = existingVotes.up > 0 || existingVotes.mid > 0 || existingVotes.down > 0;
         const actionLabel = hasExistingVotes ? 'Update' : 'Submit';
 
         voteButtonsContainer.innerHTML = `

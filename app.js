@@ -1739,6 +1739,10 @@ async function loadMainScoreboard() {
         return;
     }
 
+    const refreshButtonLabel = 'Refresh Scoreboard';
+    elements.mainRefreshScoresBtn.disabled = true;
+    elements.mainRefreshScoresBtn.textContent = 'Refreshing...';
+
     try {
         let songs = [];
         let votes = [];
@@ -1797,6 +1801,9 @@ async function loadMainScoreboard() {
     } catch (error) {
         console.error('Error loading main scoreboard:', error);
         elements.mainScoreboardContent.innerHTML = '<p class="error-message">Failed to load scoreboard</p>';
+    } finally {
+        elements.mainRefreshScoresBtn.disabled = false;
+        elements.mainRefreshScoresBtn.textContent = refreshButtonLabel;
     }
 }
 
@@ -1983,7 +1990,9 @@ function animateMainScoreboardRows(container, countries) {
         const previousPosition = previousPositions.get(row.dataset.country);
         if (!previousPosition) {
             row.classList.add('main-scoreboard-row-new');
-            requestAnimationFrame(() => row.classList.remove('main-scoreboard-row-new'));
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => row.classList.remove('main-scoreboard-row-new'));
+            });
             return;
         }
 
@@ -1999,14 +2008,10 @@ function animateMainScoreboardRows(container, countries) {
             row.style.transition = `transform ${MAIN_SCOREBOARD_ANIMATION_DURATION_MS}ms ease`;
             row.style.transform = 'translateY(0)';
         });
-        row.addEventListener('transitionend', function handleTransitionEnd(event) {
-            if (event.propertyName !== 'transform') {
-                return;
-            }
+        setTimeout(() => {
             row.style.transition = '';
             row.style.transform = '';
-            row.removeEventListener('transitionend', handleTransitionEnd);
-        });
+        }, MAIN_SCOREBOARD_ANIMATION_DURATION_MS);
     });
 }
 

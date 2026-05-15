@@ -1996,10 +1996,13 @@ function renderMainScoreboardRows(countries) {
                 <div class="main-scoreboard-rank">${country.rank || (index + 1)}</div>
                 <div class="main-scoreboard-flag" aria-hidden="true">${flag}</div>
                 <div class="main-scoreboard-country-block">
-                    <div class="main-scoreboard-country-line">
+                    <div class="main-scoreboard-country-meta-row">
                         <span class="main-scoreboard-country">${escapeHtml(country.countryName)}</span>
+                        <div class="main-scoreboard-artist-stack">
+                            <span class="main-scoreboard-singer">${singer}</span>
+                            <span class="main-scoreboard-song">${songTitle}</span>
+                        </div>
                     </div>
-                    <div class="main-scoreboard-songline">${singer} • ${songTitle}</div>
                 </div>
                 <div class="main-scoreboard-points">${country.points || 0}</div>
             </div>
@@ -2093,14 +2096,16 @@ function applyMainScoreboardRowSizing(container) {
     container.style.setProperty('--main-scoreboard-row-padding-y', `${Math.round(4 + (compactness * 6))}px`);
     container.style.setProperty('--main-scoreboard-row-padding-x', `${Math.round(6 + (compactness * 6))}px`);
     container.style.setProperty('--main-scoreboard-row-inner-gap', `${Math.round(5 + (compactness * 5))}px`);
-    container.style.setProperty('--main-scoreboard-rank-width', `${Math.round(14 + (compactness * 8))}px`);
-    container.style.setProperty('--main-scoreboard-rank-font-size', `${(0.62 + (compactness * 0.23)).toFixed(2)}rem`);
-    container.style.setProperty('--main-scoreboard-flag-width', `${Math.round(24 + (compactness * 24))}px`);
-    container.style.setProperty('--main-scoreboard-flag-font-size', `${(1 + (compactness * 1.2)).toFixed(2)}rem`);
-    container.style.setProperty('--main-scoreboard-country-font-size', `${(0.62 + (compactness * 0.28)).toFixed(2)}rem`);
-    container.style.setProperty('--main-scoreboard-song-font-size', `${(0.46 + (compactness * 0.34)).toFixed(2)}rem`);
-    container.style.setProperty('--main-scoreboard-points-width', `${Math.round(28 + (compactness * 18))}px`);
-    container.style.setProperty('--main-scoreboard-points-font-size', `${(0.62 + (compactness * 0.33)).toFixed(2)}rem`);
+    container.style.setProperty('--main-scoreboard-rank-width', `${Math.round(rowHeight * 0.34)}px`);
+    container.style.setProperty('--main-scoreboard-rank-font-size', `${Math.round(rowHeight * 0.7)}px`);
+    const flagSize = Math.max(20, rowHeight - (Math.round(4 + (compactness * 6)) * 2) - 2);
+    container.style.setProperty('--main-scoreboard-flag-size', `${flagSize}px`);
+    container.style.setProperty('--main-scoreboard-flag-font-size', `${Math.round(flagSize * 0.82)}px`);
+    container.style.setProperty('--main-scoreboard-country-font-size', `${Math.round(rowHeight * 0.66)}px`);
+    container.style.setProperty('--main-scoreboard-meta-font-size', `${Math.max(9, Math.round(rowHeight * 0.3))}px`);
+    container.style.setProperty('--main-scoreboard-meta-line-height', `${Math.max(10, Math.round(rowHeight * 0.31))}px`);
+    container.style.setProperty('--main-scoreboard-points-width', `${Math.round(rowHeight * 0.78)}px`);
+    container.style.setProperty('--main-scoreboard-points-font-size', `${Math.round(rowHeight * 0.48)}px`);
     container.style.setProperty('--main-scoreboard-points-padding-y', `${Math.max(2, Math.round(2 + (compactness * 2)))}px`);
     container.style.setProperty('--main-scoreboard-points-padding-x', `${Math.max(4, Math.round(4 + (compactness * 4)))}px`);
 }

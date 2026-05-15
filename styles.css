@@ -774,13 +774,14 @@ body {
     --main-scoreboard-row-padding-x: 12px;
     --main-scoreboard-row-inner-gap: 10px;
     --main-scoreboard-rank-width: 22px;
-    --main-scoreboard-rank-font-size: 0.85rem;
-    --main-scoreboard-flag-width: 48px;
-    --main-scoreboard-flag-font-size: 2.2rem;
-    --main-scoreboard-country-font-size: 0.9rem;
-    --main-scoreboard-song-font-size: 0.8rem;
+    --main-scoreboard-rank-font-size: 2rem;
+    --main-scoreboard-flag-size: 48px;
+    --main-scoreboard-flag-font-size: 2rem;
+    --main-scoreboard-country-font-size: 1.8rem;
+    --main-scoreboard-meta-font-size: 0.8rem;
+    --main-scoreboard-meta-line-height: 0.9rem;
     --main-scoreboard-points-width: 46px;
-    --main-scoreboard-points-font-size: 0.95rem;
+    --main-scoreboard-points-font-size: 1.2rem;
     --main-scoreboard-points-padding-y: 4px;
     --main-scoreboard-points-padding-x: 8px;
     display: grid;
@@ -816,27 +817,34 @@ body {
     flex: 1;
     min-width: 0;
     display: flex;
-    flex-direction: column;
-    justify-content: center;
+    align-items: center;
 }
 
-.main-scoreboard-country-line {
+.main-scoreboard-country-meta-row {
     display: flex;
     align-items: center;
+    gap: var(--main-scoreboard-row-inner-gap);
+    width: 100%;
 }
 
 .main-scoreboard-rank {
     color: #9aa0a6;
     min-width: var(--main-scoreboard-rank-width);
-    text-align: right;
-    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 800;
+    line-height: 1;
     font-size: var(--main-scoreboard-rank-font-size);
 }
 
 .main-scoreboard-flag {
-    min-width: var(--main-scoreboard-flag-width);
-    align-self: stretch;
-    border-radius: 6px;
+    width: var(--main-scoreboard-flag-size);
+    min-width: var(--main-scoreboard-flag-size);
+    height: var(--main-scoreboard-flag-size);
+    align-self: center;
+    border-radius: 50%;
     font-size: var(--main-scoreboard-flag-font-size);
     line-height: 1;
     background: rgba(255, 255, 255, 0.12);
@@ -849,17 +857,30 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-weight: 600;
+    font-weight: 700;
+    line-height: 1;
     font-size: var(--main-scoreboard-country-font-size);
 }
 
-.main-scoreboard-songline {
-    margin-top: 3px;
-    font-size: var(--main-scoreboard-song-font-size);
+.main-scoreboard-artist-stack {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+}
+
+.main-scoreboard-singer,
+.main-scoreboard-song {
+    font-size: var(--main-scoreboard-meta-font-size);
+    line-height: var(--main-scoreboard-meta-line-height);
     color: #d1d7e0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.main-scoreboard-singer {
+    font-weight: 600;
 }
 
 .main-scoreboard-points {
@@ -867,8 +888,12 @@ body {
     color: #fff;
     border-radius: 6px;
     min-width: var(--main-scoreboard-points-width);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     font-weight: 700;
+    line-height: 1;
     font-size: var(--main-scoreboard-points-font-size);
     padding: var(--main-scoreboard-points-padding-y) var(--main-scoreboard-points-padding-x);
 }

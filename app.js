@@ -14,6 +14,11 @@ const APP_VERSION = 'v1.0.7';
 const SCOREBOARD_QUERY_LIMIT = 10000;
 const EUROVISION_POINTS_MULTIPLIER = 116;
 const MAIN_SCOREBOARD_ANIMATION_DURATION_MS = 3000;
+const MAIN_SCOREBOARD_COLUMN_COUNT = 2;
+const MAIN_SCOREBOARD_MIN_ROW_HEIGHT_PX = 24;
+const MAIN_SCOREBOARD_MAX_ROW_HEIGHT_PX = 92;
+const MAIN_STAGING_MIN_TILE_HEIGHT_PX = 44;
+const MAIN_STAGING_MAX_TILE_HEIGHT_PX = 122;
 const MAIN_SCOREBOARD_SINGER_PLACEHOLDER = 'Singer TBC';
 const MAIN_SCOREBOARD_SONG_PLACEHOLDER = 'Song TBC';
 const PARSE_OBJECT_NOT_FOUND_ERROR_CODE = 101;
@@ -99,6 +104,7 @@ const elements = {
     mainScoreboardPartySelect: document.getElementById('main-scoreboard-party-select'),
     mainScoreboardCompetitionSelect: document.getElementById('main-scoreboard-competition-select'),
     mainScoreboardBackBtn: document.getElementById('main-scoreboard-back-btn'),
+    mainScoreboardFitBtn: document.getElementById('main-scoreboard-fit-btn'),
     mainRefreshScoresBtn: document.getElementById('main-refresh-scores-btn'),
     mainScoreboardSettingsToggle: document.getElementById('main-scoreboard-settings-toggle'),
     mainScoreboardControls: document.getElementById('main-scoreboard-controls'),
@@ -301,6 +307,7 @@ function setupEventListeners() {
     elements.backToMainBtn.addEventListener('click', showMainScreen);
     elements.refreshScoresBtn.addEventListener('click', loadScoreboard);
     elements.mainScoreboardBackBtn.addEventListener('click', () => switchTab('my-parties'));
+    elements.mainScoreboardFitBtn.addEventListener('click', recalculateMainScoreboardCellSizing);
     elements.mainRefreshScoresBtn.addEventListener('click', () => loadMainScoreboard({ runRefreshAnimation: true }));
     elements.mainScoreboardSettingsToggle.addEventListener('click', toggleMainScoreboardControls);
     elements.mainScoreboardSourceSelect.addEventListener('change', handleMainScoreboardSourceChange);
@@ -1814,6 +1821,7 @@ async function loadMainScoreboard({ runRefreshAnimation = false } = {}) {
         const contextLabel = [partyLabel, stageLabel].filter(Boolean).join(' • ');
         elements.mainScoreboardContext.textContent = contextLabel;
         elements.mainScoreboardContext.style.display = contextLabel ? 'block' : 'none';
+        recalculateMainScoreboardCellSizing();
     } catch (error) {
         console.error('Error loading main scoreboard:', error);
         elements.mainScoreboardContent.innerHTML = '<p class="error-message">Failed to load scoreboard</p>';
@@ -2040,6 +2048,116 @@ function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+}
+
+function getMainScoreboardGap(availableHeight, rowsPerColumn) {
+    if (!availableHeight || !rowsPerColumn) {
+        return 8;
+    }
+
+    return clamp(Math.floor(availableHeight / Math.max(rowsPerColumn * 14, 1)), 4, 8);
+}
+
+function applyMainScoreboardRowSizing(container) {
+    if (!container) {
+        return;
+    }
+
+    const cellCount = container.querySelectorAll('.main-scoreboard-row').length;
+    if (!cellCount) {
+        return;
+    }
+
+    const rowsPerColumn = Math.ceil(cellCount / MAIN_SCOREBOARD_COLUMN_COUNT);
+    const availableHeight = container.clientHeight;
+    if (!availableHeight || !rowsPerColumn) {
+        return;
+    }
+
+    const gap = getMainScoreboardGap(availableHeight, rowsPerColumn);
+    const rowHeight = clamp(
+        Math.floor((availableHeight - (gap * Math.max(rowsPerColumn - 1, 0))) / rowsPerColumn),
+        MAIN_SCOREBOARD_MIN_ROW_HEIGHT_PX,
+        MAIN_SCOREBOARD_MAX_ROW_HEIGHT_PX
+    );
+    const compactness = clamp(
+        (rowHeight - MAIN_SCOREBOARD_MIN_ROW_HEIGHT_PX) / (MAIN_SCOREBOARD_MAX_ROW_HEIGHT_PX - MAIN_SCOREBOARD_MIN_ROW_HEIGHT_PX),
+        0,
+        1
+    );
+
+    container.style.setProperty('--main-scoreboard-row-gap', `${gap}px`);
+    container.style.setProperty('--main-scoreboard-row-height', `${rowHeight}px`);
+    container.style.setProperty('--main-scoreboard-row-padding-y', `${Math.round(4 + (compactness * 6))}px`);
+    container.style.setProperty('--main-scoreboard-row-padding-x', `${Math.round(6 + (compactness * 6))}px`);
+    container.style.setProperty('--main-scoreboard-row-inner-gap', `${Math.round(5 + (compactness * 5))}px`);
+    container.style.setProperty('--main-scoreboard-rank-width', `${Math.round(14 + (compactness * 8))}px`);
+    container.style.setProperty('--main-scoreboard-rank-font-size', `${(0.62 + (compactness * 0.23)).toFixed(2)}rem`);
+    container.style.setProperty('--main-scoreboard-flag-width', `${Math.round(24 + (compactness * 24))}px`);
+    container.style.setProperty('--main-scoreboard-flag-font-size', `${(1 + (compactness * 1.2)).toFixed(2)}rem`);
+    container.style.setProperty('--main-scoreboard-country-font-size', `${(0.62 + (compactness * 0.28)).toFixed(2)}rem`);
+    container.style.setProperty('--main-scoreboard-song-font-size', `${(0.46 + (compactness * 0.34)).toFixed(2)}rem`);
+    container.style.setProperty('--main-scoreboard-points-width', `${Math.round(28 + (compactness * 18))}px`);
+    container.style.setProperty('--main-scoreboard-points-font-size', `${(0.62 + (compactness * 0.33)).toFixed(2)}rem`);
+    container.style.setProperty('--main-scoreboard-points-padding-y', `${Math.max(2, Math.round(2 + (compactness * 2)))}px`);
+    container.style.setProperty('--main-scoreboard-points-padding-x', `${Math.max(4, Math.round(4 + (compactness * 4)))}px`);
+}
+
+function applyMainStagingTileSizing(container) {
+    if (!container) {
+        return;
+    }
+
+    const cellCount = container.querySelectorAll('.main-scoreboard-staging-country').length;
+    if (!cellCount) {
+        return;
+    }
+
+    const rowsPerColumn = Math.ceil(cellCount / MAIN_SCOREBOARD_COLUMN_COUNT);
+    const availableHeight = container.clientHeight;
+    if (!availableHeight || !rowsPerColumn) {
+        return;
+    }
+
+    const gap = getMainScoreboardGap(availableHeight, rowsPerColumn);
+    const tileHeight = clamp(
+        Math.floor((availableHeight - (gap * Math.max(rowsPerColumn - 1, 0))) / rowsPerColumn),
+        MAIN_STAGING_MIN_TILE_HEIGHT_PX,
+        MAIN_STAGING_MAX_TILE_HEIGHT_PX
+    );
+    const compactness = clamp(
+        (tileHeight - MAIN_STAGING_MIN_TILE_HEIGHT_PX) / (MAIN_STAGING_MAX_TILE_HEIGHT_PX - MAIN_STAGING_MIN_TILE_HEIGHT_PX),
+        0,
+        1
+    );
+    const flagSize = Math.round(28 + (compactness * 28));
+    const flagOffset = Math.round(6 + (compactness * 2));
+    const flagSpace = flagSize + flagOffset + 10;
+
+    container.style.setProperty('--main-staging-grid-gap', `${gap}px`);
+    container.style.setProperty('--main-staging-tile-height', `${tileHeight}px`);
+    container.style.setProperty('--main-staging-padding-y', `${Math.round(4 + (compactness * 4))}px`);
+    container.style.setProperty('--main-staging-padding-left', `${Math.round(6 + (compactness * 2))}px`);
+    container.style.setProperty('--main-staging-flag-space', `${flagSpace}px`);
+    container.style.setProperty('--main-staging-flag-right', `${flagOffset}px`);
+    container.style.setProperty('--main-staging-flag-size', `${flagSize}px`);
+    container.style.setProperty('--main-staging-flag-font-size', `${(1 + (compactness * 1)).toFixed(2)}rem`);
+    container.style.setProperty('--main-staging-order-font-size', `${(0.5 + (compactness * 0.24)).toFixed(2)}rem`);
+    container.style.setProperty('--main-staging-country-font-size', `${(0.62 + (compactness * 0.28)).toFixed(2)}rem`);
+    container.style.setProperty('--main-staging-meta-font-size', `${(0.5 + (compactness * 0.25)).toFixed(2)}rem`);
+}
+
+function recalculateMainScoreboardCellSizing() {
+    if (!elements.mainScoreboardContent.querySelector('.main-scoreboard-layout')) {
+        return;
+    }
+
+    applyMainScoreboardRowSizing(elements.mainScoreboardContent.querySelector('.main-scoreboard-rows'));
+    applyMainStagingTileSizing(elements.mainScoreboardContent.querySelector('.main-scoreboard-staging-grid'));
+}
+
 async function animateMainScoreboardRows(container, countries, durationMs) {
     const previousPositions = new Map();
     container.querySelectorAll('.main-scoreboard-row[data-country]').forEach(row => {
@@ -2047,6 +2165,7 @@ async function animateMainScoreboardRows(container, countries, durationMs) {
     });
 
     container.innerHTML = renderMainScoreboardRows(countries);
+    recalculateMainScoreboardCellSizing();
     if (!countries || !countries.length) {
         return;
     }
@@ -2107,6 +2226,7 @@ async function animateMainStagingRows(container, countries, durationMs) {
     });
 
     container.innerHTML = renderMainStagingRows(countries);
+    recalculateMainScoreboardCellSizing();
     if (!countries || !countries.length) {
         return;
     }
@@ -2198,11 +2318,13 @@ async function renderMainEurovisionScoreboard(scoreboardData, { runRefreshAnimat
     if (runRefreshAnimation) {
         await animateMainScoreboardRows(rowsContainer, orderedScoreboardSlots, MAIN_SCOREBOARD_ANIMATION_DURATION_MS);
         await animateMainStagingRows(stagingGridContainer, orderedStagingCountries, MAIN_SCOREBOARD_ANIMATION_DURATION_MS);
+        recalculateMainScoreboardCellSizing();
         return;
     }
 
     rowsContainer.innerHTML = renderMainScoreboardRows(orderedScoreboardSlots);
     stagingGridContainer.innerHTML = renderMainStagingRows(orderedStagingCountries);
+    recalculateMainScoreboardCellSizing();
 }
 
 async function loadScoreboard() {

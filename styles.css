@@ -491,6 +491,11 @@ body {
     text-align: center;
 }
 
+.counter-submit-btn {
+    margin-top: 12px;
+    margin-bottom: 0;
+}
+
 .vote-status {
     margin-top: 15px;
     font-weight: 500;

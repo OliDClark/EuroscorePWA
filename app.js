@@ -27,6 +27,8 @@ const state = {
     currentUserVote: null,
     selectedSong: null,
     songVotesMap: {},
+    pendingCounterVotes: null,
+    existingCounterVotes: null,
     allSongs: [],
     competitions: [],
     appMode: localStorage.getItem('appMode') || 'score-entry',
@@ -1347,11 +1349,17 @@ function showNormalVotingInterface() {
 
 // Show the counter voting interface with +/- buttons (when GuestVoting is false)
 async function showCounterVotingInterface(song) {
-    // Load aggregated votes for this specific song
-    const votes = state.songVotesMap[song.id] || { up: 0, mid: 0, down: 0 };
+    // Load stored votes for this specific song to drive submit/update state
+    const existingVotes = state.songVotesMap[song.id] || { up: 0, mid: 0, down: 0 };
+    const votes = { ...existingVotes };
+    state.pendingCounterVotes = votes;
+    state.existingCounterVotes = existingVotes;
     
     const voteButtonsContainer = document.querySelector('.vote-buttons');
     if (voteButtonsContainer) {
+        const hasExistingVotes = (existingVotes.up || 0) > 0 || (existingVotes.mid || 0) > 0 || (existingVotes.down || 0) > 0;
+        const actionLabel = hasExistingVotes ? 'Update' : 'Submit';
+
         voteButtonsContainer.innerHTML = `
             <div class="counter-vote">
                 <span class="vote-emoji">👍</span>
@@ -1377,6 +1385,7 @@ async function showCounterVotingInterface(song) {
                     <button class="counter-btn minus" data-type="down">−</button>
                 </div>
             </div>
+            <button class="btn btn-primary counter-submit-btn" id="counter-submit-btn">${actionLabel}</button>
         `;
         
         // Attach event listeners for +/- buttons
@@ -1386,30 +1395,47 @@ async function showCounterVotingInterface(song) {
         voteButtonsContainer.querySelectorAll('.counter-btn.minus').forEach(btn => {
             btn.addEventListener('click', () => adjustVoteCount(btn.dataset.type, -1));
         });
+
+        const submitBtn = voteButtonsContainer.querySelector('#counter-submit-btn');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', handleCounterVoteSubmit);
+        }
     }
     
-    elements.voteStatus.textContent = 'Tap + or - to adjust vote counts';
+    elements.voteStatus.textContent = 'Tap + or - to adjust vote counts, then submit.';
 }
 
 // Adjust vote count (for counter interface when GuestVoting is false)
-async function adjustVoteCount(type, delta) {
+function adjustVoteCount(type, delta) {
     if (!state.selectedSong || !state.currentParty) {
         console.error('No song or party selected');
         return;
     }
     
-    const song = state.selectedSong;
-    const songId = song.id;
-    
-    // Update the local counter display
+    if (!state.pendingCounterVotes) {
+        state.pendingCounterVotes = { up: 0, mid: 0, down: 0 };
+    }
+
+    const currentValue = state.pendingCounterVotes[type] || 0;
+    const newValue = Math.max(0, currentValue + delta);
+    state.pendingCounterVotes[type] = newValue;
+
     const counterEl = document.getElementById(`counter-${type}`);
     if (counterEl) {
-        let currentValue = parseInt(counterEl.textContent) || 0;
-        currentValue = Math.max(0, currentValue + delta); // Don't go below 0
-        counterEl.textContent = currentValue;
+        counterEl.textContent = newValue;
     }
-    
-    // Save to Parse Server - create or update vote object
+
+    elements.voteStatus.textContent = 'Changes pending. Press Submit/Update to save.';
+}
+
+async function handleCounterVoteSubmit() {
+    if (!state.selectedSong || !state.currentParty || !state.pendingCounterVotes) {
+        return;
+    }
+
+    const song = state.selectedSong;
+    const songId = song.id;
+
     try {
         const Thumbs = Parse.Object.extend('Thumbs');
         const Parties = Parse.Object.extend('Parties');
@@ -1425,46 +1451,34 @@ async function adjustVoteCount(type, delta) {
         query.equalTo('songDeets', songPointer);
         
         let vote = await query.first();
+        const hadExistingVoteRecord = !!vote;
         
         if (!vote) {
-            // Create new vote object
             vote = new Thumbs();
             vote.set('whoseVote', state.currentUser);
             vote.set('whichParty', partyPointer);
             vote.set('songDeets', songPointer);
-            vote.set('thumbsUp', 0);
-            vote.set('thumbsMid', 0);
-            vote.set('thumbsDown', 0);
         }
-        
-        // Determine which field to update
-        let fieldName;
-        switch (type) {
-            case 'up': fieldName = 'thumbsUp'; break;
-            case 'mid': fieldName = 'thumbsMid'; break;
-            case 'down': fieldName = 'thumbsDown'; break;
-            default: return;
-        }
-        
-        // Update the count (don't go below 0)
-        const newValue = Math.max(0, (vote.get(fieldName) || 0) + delta);
-        vote.set(fieldName, newValue);
+
+        vote.set('thumbsUp', state.pendingCounterVotes.up || 0);
+        vote.set('thumbsMid', state.pendingCounterVotes.mid || 0);
+        vote.set('thumbsDown', state.pendingCounterVotes.down || 0);
         
         await vote.save();
         
-        // Update state songVotesMap
-        if (!state.songVotesMap[songId]) {
-            state.songVotesMap[songId] = { up: 0, mid: 0, down: 0 };
-        }
-        state.songVotesMap[songId][type] = newValue;
+        state.songVotesMap[songId] = { ...state.pendingCounterVotes };
+        state.existingCounterVotes = { ...state.pendingCounterVotes };
         
-        // Update the song item display
         updateSongVoteDisplay(songId);
-        
-        elements.voteStatus.textContent = 'Vote updated!';
+        elements.voteStatus.textContent = hadExistingVoteRecord ? 'Votes updated!' : 'Votes submitted!';
+
+        const submitBtn = document.getElementById('counter-submit-btn');
+        if (submitBtn) {
+            submitBtn.textContent = 'Update';
+        }
     } catch (error) {
-        console.error('Error adjusting vote count:', error);
-        elements.voteStatus.textContent = 'Error saving vote';
+        console.error('Error saving counter votes:', error);
+        elements.voteStatus.textContent = 'Error saving votes';
     }
 }
 

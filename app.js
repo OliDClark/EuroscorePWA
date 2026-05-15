@@ -1748,10 +1748,10 @@ async function loadMainScoreboard({ runRefreshAnimation = false } = {}) {
     if (!elements.mainScoreboardContent.querySelector('.main-scoreboard-layout')) {
         elements.mainScoreboardContent.innerHTML = '<p class="loading">Loading rankings...</p>';
     }
-    elements.mainScoreboardContext.style.display = 'none';
 
     if (!sourceType) {
         elements.mainScoreboardContent.innerHTML = '<p class="loading">Choose a source to view the scoreboard.</p>';
+        elements.mainScoreboardContext.style.display = 'none';
         return;
     }
 

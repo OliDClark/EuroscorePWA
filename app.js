@@ -98,6 +98,7 @@ const elements = {
     mainScoreboardCompetitionSelectorWrap: document.getElementById('main-scoreboard-competition-selector-wrap'),
     mainScoreboardPartySelect: document.getElementById('main-scoreboard-party-select'),
     mainScoreboardCompetitionSelect: document.getElementById('main-scoreboard-competition-select'),
+    mainScoreboardBackBtn: document.getElementById('main-scoreboard-back-btn'),
     mainRefreshScoresBtn: document.getElementById('main-refresh-scores-btn'),
     mainScoreboardSettingsToggle: document.getElementById('main-scoreboard-settings-toggle'),
     mainScoreboardControls: document.getElementById('main-scoreboard-controls'),
@@ -299,6 +300,7 @@ function setupEventListeners() {
     elements.createPartyBtn.addEventListener('click', handleCreateParty);
     elements.backToMainBtn.addEventListener('click', showMainScreen);
     elements.refreshScoresBtn.addEventListener('click', loadScoreboard);
+    elements.mainScoreboardBackBtn.addEventListener('click', () => switchTab('my-parties'));
     elements.mainRefreshScoresBtn.addEventListener('click', () => loadMainScoreboard({ runRefreshAnimation: true }));
     elements.mainScoreboardSettingsToggle.addEventListener('click', toggleMainScoreboardControls);
     elements.mainScoreboardSourceSelect.addEventListener('change', handleMainScoreboardSourceChange);

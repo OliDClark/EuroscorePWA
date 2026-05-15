@@ -14,6 +14,8 @@ const APP_VERSION = 'v1.0.5';
 const SCOREBOARD_QUERY_LIMIT = 10000;
 const EUROVISION_POINTS_MULTIPLIER = 116;
 const MAIN_SCOREBOARD_ANIMATION_DURATION_MS = 450;
+const MAIN_SCOREBOARD_SINGER_PLACEHOLDER = 'Singer TBC';
+const MAIN_SCOREBOARD_SONG_PLACEHOLDER = 'Song TBC';
 const PARSE_OBJECT_NOT_FOUND_ERROR_CODE = 101;
 const PARTY_NOT_FOUND = 'Party not found';
 const PARTY_NOT_FOUND_OR_PASSWORD_INCORRECT = 'Party not found or password incorrect';
@@ -1959,8 +1961,8 @@ function renderMainScoreboardRows(countries) {
 
     return countries.map((country, index) => {
         const flag = country.countryCode ? getCountryFlag(country.countryCode) : '🏳️';
-        const singer = escapeHtml(country.singer || 'Singer TBC');
-        const songTitle = escapeHtml(country.songTitle || 'Song TBC');
+        const singer = escapeHtml(country.singer || MAIN_SCOREBOARD_SINGER_PLACEHOLDER);
+        const songTitle = escapeHtml(country.songTitle || MAIN_SCOREBOARD_SONG_PLACEHOLDER);
 
         return `
             <div class="main-scoreboard-row" data-country="${escapeHtml(country.countryName)}">
@@ -1990,6 +1992,7 @@ function animateMainScoreboardRows(container, countries) {
         const previousPosition = previousPositions.get(row.dataset.country);
         if (!previousPosition) {
             row.classList.add('main-scoreboard-row-new');
+            // Use double RAF so the opacity-0 state is painted before removing the class.
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => row.classList.remove('main-scoreboard-row-new'));
             });
@@ -2008,10 +2011,26 @@ function animateMainScoreboardRows(container, countries) {
             row.style.transition = `transform ${MAIN_SCOREBOARD_ANIMATION_DURATION_MS}ms ease`;
             row.style.transform = 'translateY(0)';
         });
-        setTimeout(() => {
+        const cleanupRowAnimation = () => {
             row.style.transition = '';
             row.style.transform = '';
-        }, MAIN_SCOREBOARD_ANIMATION_DURATION_MS);
+        };
+
+        const cleanupTimeout = setTimeout(() => {
+            row.removeEventListener('transitionend', handleAnimationEnd);
+            cleanupRowAnimation();
+        }, MAIN_SCOREBOARD_ANIMATION_DURATION_MS + 50);
+
+        function handleAnimationEnd(event) {
+            if (event.propertyName !== 'transform') {
+                return;
+            }
+            clearTimeout(cleanupTimeout);
+            row.removeEventListener('transitionend', handleAnimationEnd);
+            cleanupRowAnimation();
+        }
+
+        row.addEventListener('transitionend', handleAnimationEnd);
     });
 }
 
@@ -2050,8 +2069,8 @@ function renderMainEurovisionScoreboard(scoreboardData) {
             <div class="main-scoreboard-next-card">
                 <div class="main-scoreboard-next-label">Next to perform</div>
                 <div class="main-scoreboard-next-country">${flag} ${escapeHtml(nextPerformer.countryName)}</div>
-                <div class="main-scoreboard-next-singer">${escapeHtml(nextPerformer.singer || 'Singer TBC')}</div>
-                <div class="main-scoreboard-next-song">${escapeHtml(nextPerformer.songTitle || 'Song TBC')}</div>
+                <div class="main-scoreboard-next-singer">${escapeHtml(nextPerformer.singer || MAIN_SCOREBOARD_SINGER_PLACEHOLDER)}</div>
+                <div class="main-scoreboard-next-song">${escapeHtml(nextPerformer.songTitle || MAIN_SCOREBOARD_SONG_PLACEHOLDER)}</div>
             </div>
         `;
     } else {
@@ -2069,8 +2088,8 @@ function renderMainEurovisionScoreboard(scoreboardData) {
         return `
             <div class="main-scoreboard-staging-country${isNext ? ' is-next-performer' : ''}">
                 <div class="main-scoreboard-staging-country-name">${flag} ${escapeHtml(country.countryName)}</div>
-                <div class="main-scoreboard-staging-singer">${escapeHtml(country.singer || 'Singer TBC')}</div>
-                <div class="main-scoreboard-staging-song">${escapeHtml(country.songTitle || 'Song TBC')}</div>
+                <div class="main-scoreboard-staging-singer">${escapeHtml(country.singer || MAIN_SCOREBOARD_SINGER_PLACEHOLDER)}</div>
+                <div class="main-scoreboard-staging-song">${escapeHtml(country.songTitle || MAIN_SCOREBOARD_SONG_PLACEHOLDER)}</div>
             </div>
         `;
     }).join('');

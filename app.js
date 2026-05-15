@@ -1976,19 +1976,7 @@ function renderMainScoreboardRows(countries) {
 
     return countries.map((country, index) => {
         if (!country) {
-            return `
-                <div class="main-scoreboard-row main-scoreboard-row-placeholder" data-slot="${index + 1}">
-                    <div class="main-scoreboard-rank main-scoreboard-rank-placeholder">${index + 1}</div>
-                    <div class="main-scoreboard-flag main-scoreboard-flag-placeholder" aria-hidden="true">🏁</div>
-                    <div class="main-scoreboard-country-block">
-                        <div class="main-scoreboard-country-line">
-                            <span class="main-scoreboard-country main-scoreboard-country-placeholder">Waiting for votes</span>
-                        </div>
-                        <div class="main-scoreboard-songline main-scoreboard-songline-placeholder">This slot will populate when a country receives points.</div>
-                    </div>
-                    <div class="main-scoreboard-points main-scoreboard-points-placeholder">--</div>
-                </div>
-            `;
+            return `<div class="main-scoreboard-row main-scoreboard-row-placeholder" data-slot="${index + 1}"></div>`;
         }
 
         const flag = country.countryCode ? getCountryFlag(country.countryCode) : '🏳️';

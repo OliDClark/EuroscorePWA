@@ -850,29 +850,7 @@ body {
 
 .main-scoreboard-row-placeholder {
     border: 1px dashed rgba(28, 45, 88, 0.45);
-    background: linear-gradient(140deg, rgba(226, 235, 255, 0.95), rgba(206, 222, 252, 0.92));
-    color: #1f325f;
-}
-
-.main-scoreboard-rank-placeholder {
-    color: #4f6497;
-}
-
-.main-scoreboard-flag-placeholder {
-    background: rgba(40, 71, 138, 0.14);
-    font-size: 1.55rem;
-}
-
-.main-scoreboard-country-placeholder {
-    color: #1f325f;
-}
-
-.main-scoreboard-songline-placeholder {
-    color: #3c548b;
-}
-
-.main-scoreboard-points-placeholder {
-    background: rgba(56, 87, 155, 0.75);
+    background: transparent;
 }
 
 .main-scoreboard-next-card {

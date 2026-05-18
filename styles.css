@@ -707,7 +707,6 @@ body {
 .main-scoreboard-back-toggle,
 .main-scoreboard-fit-toggle,
 .main-scoreboard-sequence-toggle,
-.main-scoreboard-refresh-toggle,
 .main-scoreboard-settings-toggle {
     width: 38px;
     height: 34px;
@@ -731,7 +730,21 @@ body {
     opacity: 0.88;
 }
 
-.main-scoreboard-refresh-toggle.is-loading {
+.main-scoreboard-refresh-bottom {
+    margin: 12px 0 0 auto;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.main-scoreboard-refresh-bottom.is-loading {
     opacity: 0.8;
     animation: main-scoreboard-spin 0.85s linear infinite;
 }
@@ -750,9 +763,23 @@ body {
 #main-scoreboard-context {
     display: none;
     margin-bottom: 15px;
-    font-size: 1.2rem;
-    text-align: center;
+    text-align: left;
+}
+
+.main-scoreboard-context-party {
+    display: block;
+    font-size: 1.6rem;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.main-scoreboard-context-stage {
+    display: block;
+    margin-top: 2px;
+    font-size: 1.05rem;
+    line-height: 1.2;
     font-weight: 600;
+    opacity: 0.92;
 }
 
 .main-scoreboard-layout {
@@ -778,6 +805,10 @@ body {
     margin-bottom: 10px;
     font-size: 1rem;
     color: var(--primary-color);
+}
+
+.main-scoreboard-layout-expanded {
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .main-scoreboard-rows {
@@ -1275,8 +1306,10 @@ body {
     height: 100vh;
     border-radius: 0;
     box-shadow: none;
-    padding: 10px 12px 12px;
+    padding: 10px 12px 82px;
     background: #070f20;
+    display: flex;
+    flex-direction: column;
 }
 
 #main-screen.scoreboard-main-mode .scoreboard h3 {
@@ -1290,7 +1323,35 @@ body {
     color: #d0e1ff;
     text-align: left;
     margin-bottom: 10px;
-    font-size: 1rem;
+}
+
+#main-screen.scoreboard-main-mode .main-scoreboard-context-party {
+    font-size: 1.9rem;
+}
+
+#main-screen.scoreboard-main-mode .main-scoreboard-context-stage {
+    font-size: 1.15rem;
+}
+
+#main-screen.scoreboard-main-mode #main-scoreboard-content {
+    flex: 1;
+    min-height: 0;
+}
+
+#main-screen.scoreboard-main-mode .main-scoreboard-layout {
+    height: 100%;
+}
+
+#main-screen.scoreboard-main-mode #main-refresh-scores-btn.main-scoreboard-refresh-bottom {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    left: auto;
+    transform: none;
+    width: 56px;
+    height: 56px;
+    font-size: 1.65rem;
+    z-index: 30;
 }
 
 

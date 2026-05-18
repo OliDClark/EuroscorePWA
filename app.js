@@ -10,7 +10,7 @@ Parse.initialize(PARSE_CONFIG.appId, PARSE_CONFIG.javascriptKey);
 Parse.serverURL = PARSE_CONFIG.serverURL;
 console.log('Parse Config:', PARSE_CONFIG);
 
-const APP_VERSION = 'v1.0.14';
+const APP_VERSION = 'v1.0.15';
 const SCOREBOARD_QUERY_LIMIT = 10000;
 const EUROVISION_POINTS_MULTIPLIER = 116;
 const MAIN_SCOREBOARD_ANIMATION_DURATION_MS = 3000;
@@ -2075,9 +2075,18 @@ async function loadMainScoreboard({ runRefreshAnimation = false, advanceSequenti
         const scoreboardData = buildMainScoreboardData(votes, songs);
         await renderMainEurovisionScoreboard(scoreboardData, { runRefreshAnimation });
 
-        const contextLabel = [partyLabel, stageLabel, sequenceLabel].filter(Boolean).join(' • ');
-        elements.mainScoreboardContext.textContent = contextLabel;
-        elements.mainScoreboardContext.style.display = contextLabel ? 'block' : 'none';
+        const hasContext = Boolean(partyLabel || stageLabel || sequenceLabel);
+        if (!hasContext) {
+            elements.mainScoreboardContext.textContent = '';
+            elements.mainScoreboardContext.style.display = 'none';
+        } else {
+            const stageWithSequence = [stageLabel, sequenceLabel].filter(Boolean).join(' • ');
+            elements.mainScoreboardContext.innerHTML = `
+                ${partyLabel ? `<span class="main-scoreboard-context-party">${escapeHtml(partyLabel)}</span>` : ''}
+                ${stageWithSequence ? `<span class="main-scoreboard-context-stage">${escapeHtml(stageWithSequence)}</span>` : ''}
+            `;
+            elements.mainScoreboardContext.style.display = 'block';
+        }
         recalculateMainScoreboardCellSizing();
     } catch (error) {
         console.error('Error loading main scoreboard:', error);
@@ -2547,18 +2556,28 @@ async function renderMainEurovisionScoreboard(scoreboardData, { runRefreshAnimat
     const rowsContainer = elements.mainScoreboardContent.querySelector('.main-scoreboard-rows');
     const nextPerformerContainer = elements.mainScoreboardContent.querySelector('.main-scoreboard-next-performer');
     const stagingGridContainer = elements.mainScoreboardContent.querySelector('.main-scoreboard-staging-grid');
+    const layoutContainer = elements.mainScoreboardContent.querySelector('.main-scoreboard-layout');
+    const stagingPanel = elements.mainScoreboardContent.querySelector('.main-scoreboard-panel-right');
     const rankedVotedCountries = (votedCountries || []).map((country, index) => ({
         ...country,
         rank: index + 1
     }));
     const totalCompetingCountries = (votedCountries || []).length + (unvotedCountries || []).length;
+    const hasUnvotedCountries = (unvotedCountries || []).length > 0;
     const scoreboardSlots = [
         ...rankedVotedCountries,
         ...Array.from({ length: Math.max(totalCompetingCountries - rankedVotedCountries.length, 0) }, () => null)
     ];
     const orderedScoreboardSlots = arrangeForVerticalColumns(scoreboardSlots);
 
-    if (nextPerformer) {
+    if (stagingPanel) {
+        stagingPanel.classList.toggle('hidden', !hasUnvotedCountries);
+    }
+    if (layoutContainer) {
+        layoutContainer.classList.toggle('main-scoreboard-layout-expanded', !hasUnvotedCountries);
+    }
+
+    if (hasUnvotedCountries && nextPerformer) {
         const flag = nextPerformer.countryCode ? getCountryFlag(nextPerformer.countryCode) : '🏳️';
         nextPerformerContainer.innerHTML = `
             <div class="main-scoreboard-next-card">
@@ -2576,18 +2595,24 @@ async function renderMainEurovisionScoreboard(scoreboardData, { runRefreshAnimat
                 </div>
             </div>
         `;
-    } else {
+    } else if (hasUnvotedCountries) {
         nextPerformerContainer.innerHTML = '<p class="loading">All countries have received votes.</p>';
+    } else {
+        nextPerformerContainer.innerHTML = '';
     }
 
-    const stagingCountries = (unvotedCountries || []).filter(country => {
+    const stagingCountries = hasUnvotedCountries ? (unvotedCountries || []).filter(country => {
         return !nextPerformer || country.countryName !== nextPerformer.countryName;
-    });
+    }) : [];
     const orderedStagingCountries = arrangeForVerticalColumns(stagingCountries);
 
     if (runRefreshAnimation) {
         await animateMainScoreboardRows(rowsContainer, orderedScoreboardSlots, MAIN_SCOREBOARD_ANIMATION_DURATION_MS);
-        await animateMainStagingRows(stagingGridContainer, orderedStagingCountries, MAIN_SCOREBOARD_ANIMATION_DURATION_MS);
+        if (hasUnvotedCountries) {
+            await animateMainStagingRows(stagingGridContainer, orderedStagingCountries, MAIN_SCOREBOARD_ANIMATION_DURATION_MS);
+        } else {
+            stagingGridContainer.innerHTML = '';
+        }
         recalculateMainScoreboardCellSizing();
         return;
     }

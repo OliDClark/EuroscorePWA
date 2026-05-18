@@ -10,7 +10,7 @@ Parse.initialize(PARSE_CONFIG.appId, PARSE_CONFIG.javascriptKey);
 Parse.serverURL = PARSE_CONFIG.serverURL;
 console.log('Parse Config:', PARSE_CONFIG);
 
-const APP_VERSION = 'v1.0.13';
+const APP_VERSION = 'v1.0.14';
 const SCOREBOARD_QUERY_LIMIT = 10000;
 const EUROVISION_POINTS_MULTIPLIER = 116;
 const MAIN_SCOREBOARD_ANIMATION_DURATION_MS = 3000;
@@ -39,6 +39,7 @@ const state = {
     existingCounterVotes: null,
     allSongs: [],
     competitions: [],
+    mainScoreboardSequenceIndex: 0,
     appMode: localStorage.getItem('appMode') || 'score-entry',
     displayMode: localStorage.getItem('displayMode') || 'standalone'
 };
@@ -101,10 +102,15 @@ const elements = {
     mainScoreboardSourceSelect: document.getElementById('main-scoreboard-source-select'),
     mainScoreboardPartySelectorWrap: document.getElementById('main-scoreboard-party-selector-wrap'),
     mainScoreboardCompetitionSelectorWrap: document.getElementById('main-scoreboard-competition-selector-wrap'),
+    mainScoreboardPartyYearSelect: document.getElementById('main-scoreboard-party-year-select'),
+    mainScoreboardPartyStageSelect: document.getElementById('main-scoreboard-party-stage-select'),
     mainScoreboardPartySelect: document.getElementById('main-scoreboard-party-select'),
+    mainScoreboardPartyDisplayModeWrap: document.getElementById('main-scoreboard-party-display-mode-wrap'),
+    mainScoreboardPartyDisplayModeSelect: document.getElementById('main-scoreboard-party-display-mode-select'),
     mainScoreboardCompetitionSelect: document.getElementById('main-scoreboard-competition-select'),
     mainScoreboardBackBtn: document.getElementById('main-scoreboard-back-btn'),
     mainScoreboardFitBtn: document.getElementById('main-scoreboard-fit-btn'),
+    mainScoreboardSequenceNextBtn: document.getElementById('main-scoreboard-sequence-next-btn'),
     mainRefreshScoresBtn: document.getElementById('main-refresh-scores-btn'),
     mainScoreboardSettingsToggle: document.getElementById('main-scoreboard-settings-toggle'),
     mainScoreboardControls: document.getElementById('main-scoreboard-controls'),
@@ -308,10 +314,14 @@ function setupEventListeners() {
     elements.refreshScoresBtn.addEventListener('click', loadScoreboard);
     elements.mainScoreboardBackBtn.addEventListener('click', () => switchTab('my-parties'));
     elements.mainScoreboardFitBtn.addEventListener('click', recalculateMainScoreboardCellSizing);
+    elements.mainScoreboardSequenceNextBtn.addEventListener('click', () => loadMainScoreboard({ runRefreshAnimation: true, advanceSequential: true }));
     elements.mainRefreshScoresBtn.addEventListener('click', () => loadMainScoreboard({ runRefreshAnimation: true }));
     elements.mainScoreboardSettingsToggle.addEventListener('click', toggleMainScoreboardControls);
     elements.mainScoreboardSourceSelect.addEventListener('change', handleMainScoreboardSourceChange);
-    elements.mainScoreboardPartySelect.addEventListener('change', loadMainScoreboard);
+    elements.mainScoreboardPartyYearSelect.addEventListener('change', handleMainScoreboardPartyYearChange);
+    elements.mainScoreboardPartyStageSelect.addEventListener('change', handleMainScoreboardPartyStageChange);
+    elements.mainScoreboardPartySelect.addEventListener('change', handleMainScoreboardPartySelectionChange);
+    elements.mainScoreboardPartyDisplayModeSelect.addEventListener('change', handleMainScoreboardPartyDisplayModeChange);
     elements.mainScoreboardCompetitionSelect.addEventListener('change', loadMainScoreboard);
 
     // QR code
@@ -564,21 +574,169 @@ function getAllUserParties() {
     return Array.from(byId.values());
 }
 
-function populateMainScoreboardPartyOptions() {
-    const parties = getAllUserParties();
-    const currentValue = elements.mainScoreboardPartySelect.value;
+function getResolvedCompetitionForParty(party) {
+    const competition = party.get('whichComp');
+    if (!competition) {
+        return null;
+    }
 
-    elements.mainScoreboardPartySelect.innerHTML = '<option value="">Select a party...</option>';
-    parties.forEach(party => {
+    const hasYear = competition.get('year') || competition.get('Year');
+    const hasStage = competition.get('stage') || competition.get('Stage');
+    if (hasYear || hasStage) {
+        return competition;
+    }
+
+    return state.competitions.find(comp => comp.id === competition.id) || competition;
+}
+
+function getCompetitionYearValue(competition) {
+    if (!competition) return '';
+    return String(competition.get('year') || competition.get('Year') || '').trim();
+}
+
+function getCompetitionStageValue(competition) {
+    if (!competition) return '';
+    return String(competition.get('stage') || competition.get('Stage') || '').trim();
+}
+
+function getMainScoreboardPartyDescriptors() {
+    const descriptors = getAllUserParties().map(party => {
+        const competition = getResolvedCompetitionForParty(party);
+        const year = getCompetitionYearValue(competition);
+        const stage = getCompetitionStageValue(competition);
+        return {
+            id: party.id,
+            name: party.get('Name') || 'Unnamed Party',
+            party,
+            competition,
+            year,
+            stage
+        };
+    }).filter(item => item.competition && item.year && item.stage);
+
+    return descriptors.sort((a, b) => {
+        const aYear = Number(a.year);
+        const bYear = Number(b.year);
+        if (!Number.isNaN(aYear) && !Number.isNaN(bYear) && bYear !== aYear) {
+            return bYear - aYear;
+        }
+        if (b.year !== a.year) {
+            return b.year.localeCompare(a.year);
+        }
+        if (a.stage !== b.stage) {
+            return a.stage.localeCompare(b.stage);
+        }
+        return a.name.localeCompare(b.name);
+    });
+}
+
+function getSelectedMainScoreboardPartyIds() {
+    return Array.from(elements.mainScoreboardPartySelect.selectedOptions || [])
+        .map(option => option.value)
+        .filter(Boolean);
+}
+
+function resetMainScoreboardSequenceIndex() {
+    state.mainScoreboardSequenceIndex = 0;
+}
+
+function updateMainScoreboardPartyDisplayModeVisibility() {
+    const hasMultipleParties = getSelectedMainScoreboardPartyIds().length > 1;
+    elements.mainScoreboardPartyDisplayModeWrap.classList.toggle('hidden', !hasMultipleParties);
+    if (!hasMultipleParties) {
+        elements.mainScoreboardPartyDisplayModeSelect.value = 'combined';
+    }
+}
+
+function populateMainScoreboardPartyOptions() {
+    const descriptors = getMainScoreboardPartyDescriptors();
+    const selectedPartyIds = new Set(getSelectedMainScoreboardPartyIds());
+    const yearSelect = elements.mainScoreboardPartyYearSelect;
+    const stageSelect = elements.mainScoreboardPartyStageSelect;
+    const partySelect = elements.mainScoreboardPartySelect;
+    const currentYear = yearSelect.value;
+    const currentStage = stageSelect.value;
+
+    const yearOptions = Array.from(new Set(descriptors.map(item => item.year)));
+    yearSelect.innerHTML = '<option value="">Select a year...</option>';
+    yearOptions.forEach(year => {
         const option = document.createElement('option');
-        option.value = party.id;
-        option.textContent = party.get('Name') || 'Unnamed Party';
-        elements.mainScoreboardPartySelect.appendChild(option);
+        option.value = year;
+        option.textContent = year;
+        yearSelect.appendChild(option);
     });
 
-    if (currentValue && parties.some(p => p.id === currentValue)) {
-        elements.mainScoreboardPartySelect.value = currentValue;
+    if (currentYear && yearOptions.includes(currentYear)) {
+        yearSelect.value = currentYear;
     }
+
+    const selectedYear = yearSelect.value;
+    const stageOptions = selectedYear
+        ? Array.from(new Set(descriptors
+            .filter(item => item.year === selectedYear)
+            .map(item => item.stage)))
+        : [];
+
+    stageSelect.innerHTML = '<option value="">Select a competition stage...</option>';
+    stageOptions.forEach(stage => {
+        const option = document.createElement('option');
+        option.value = stage;
+        option.textContent = stage;
+        stageSelect.appendChild(option);
+    });
+
+    if (currentStage && stageOptions.includes(currentStage)) {
+        stageSelect.value = currentStage;
+    }
+
+    const selectedStage = stageSelect.value;
+    partySelect.innerHTML = '';
+
+    if (selectedYear && selectedStage) {
+        descriptors
+            .filter(item => item.year === selectedYear && item.stage === selectedStage)
+            .forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.name;
+                option.selected = selectedPartyIds.has(item.id);
+                partySelect.appendChild(option);
+            });
+    }
+
+    updateMainScoreboardPartyDisplayModeVisibility();
+}
+
+function handleMainScoreboardPartyYearChange() {
+    elements.mainScoreboardPartyStageSelect.value = '';
+    resetMainScoreboardSequenceIndex();
+    populateMainScoreboardPartyOptions();
+    loadMainScoreboard();
+}
+
+function handleMainScoreboardPartyStageChange() {
+    resetMainScoreboardSequenceIndex();
+    populateMainScoreboardPartyOptions();
+    loadMainScoreboard();
+}
+
+function handleMainScoreboardPartySelectionChange() {
+    resetMainScoreboardSequenceIndex();
+    updateMainScoreboardPartyDisplayModeVisibility();
+    loadMainScoreboard();
+}
+
+function handleMainScoreboardPartyDisplayModeChange() {
+    resetMainScoreboardSequenceIndex();
+    loadMainScoreboard();
+}
+
+function getMainScoreboardPartySelectionMode() {
+    const selectedPartyCount = getSelectedMainScoreboardPartyIds().length;
+    if (selectedPartyCount <= 1) {
+        return 'combined';
+    }
+    return elements.mainScoreboardPartyDisplayModeSelect.value || 'combined';
 }
 
 function populateMainScoreboardCompetitionOptions() {
@@ -616,11 +774,17 @@ function handleMainScoreboardSourceChange() {
     const source = elements.mainScoreboardSourceSelect.value;
     elements.mainScoreboardPartySelectorWrap.classList.toggle('hidden', source !== 'party');
     elements.mainScoreboardCompetitionSelectorWrap.classList.toggle('hidden', source !== 'competition');
+    elements.mainScoreboardSequenceNextBtn.classList.add('hidden');
+    resetMainScoreboardSequenceIndex();
 
     if (!source) {
         elements.mainScoreboardContext.style.display = 'none';
         elements.mainScoreboardContent.innerHTML = '<p class="loading">Choose a source to view the scoreboard.</p>';
         return;
+    }
+
+    if (source === 'party') {
+        populateMainScoreboardPartyOptions();
     }
 
     loadMainScoreboard();
@@ -1754,7 +1918,54 @@ async function refreshSongVoteDisplay(songId, voteValue) {
     }
 }
 
-async function loadMainScoreboard({ runRefreshAnimation = false } = {}) {
+async function buildMainScoreboardPartySourceItems(parties) {
+    const partyItems = (await Promise.all((parties || []).map(async party => {
+        const competition = getResolvedCompetitionForParty(party);
+        if (!competition) {
+            return null;
+        }
+
+        const songs = await fetchSongsForCompetition(competition);
+        const votes = await fetchScoreboardVotes({ partyId: party.id });
+        return {
+            id: `party-${party.id}`,
+            songs,
+            votes,
+            partyLabel: `Party: ${party.get('Name') || 'Unnamed Party'}`,
+            stageLabel: `Stage: ${getCompetitionLabel(competition)}`
+        };
+    }))).filter(Boolean);
+
+    const combinedVotes = partyItems.flatMap(item => item.votes || []);
+    const combinedSongsById = new Map();
+    partyItems.forEach(item => {
+        (item.songs || []).forEach(song => {
+            if (song?.id && !combinedSongsById.has(song.id)) {
+                combinedSongsById.set(song.id, song);
+            }
+        });
+    });
+
+    let combinedStageLabel = '';
+    const stageLabels = Array.from(new Set(partyItems.map(item => item.stageLabel)));
+    if (stageLabels.length === 1) {
+        combinedStageLabel = stageLabels[0];
+    } else if (stageLabels.length > 1) {
+        combinedStageLabel = 'Stage: Mixed stages';
+    }
+
+    const combinedItem = {
+        id: 'combined',
+        songs: Array.from(combinedSongsById.values()),
+        votes: combinedVotes,
+        partyLabel: 'Party: Combined selection',
+        stageLabel: combinedStageLabel
+    };
+
+    return { partyItems, combinedItem };
+}
+
+async function loadMainScoreboard({ runRefreshAnimation = false, advanceSequential = false } = {}) {
     const sourceType = elements.mainScoreboardSourceSelect.value;
     if (!elements.mainScoreboardContent.querySelector('.main-scoreboard-layout')) {
         elements.mainScoreboardContent.innerHTML = '<p class="loading">Loading rankings...</p>';
@@ -1775,30 +1986,71 @@ async function loadMainScoreboard({ runRefreshAnimation = false } = {}) {
         let votes = [];
         let partyLabel = '';
         let stageLabel = '';
+        let sequenceLabel = '';
+        elements.mainScoreboardSequenceNextBtn.classList.add('hidden');
 
         if (sourceType === 'party') {
-            const partyId = elements.mainScoreboardPartySelect.value;
-            if (!partyId) {
-                elements.mainScoreboardContent.innerHTML = '<p class="loading">Select a party to continue.</p>';
+            const selectedYear = elements.mainScoreboardPartyYearSelect.value;
+            const selectedStage = elements.mainScoreboardPartyStageSelect.value;
+            if (!selectedYear) {
+                elements.mainScoreboardContent.innerHTML = '<p class="loading">Select a year to continue.</p>';
                 return;
             }
 
-            const party = getAllUserParties().find(p => p.id === partyId);
-            if (!party) {
-                elements.mainScoreboardContent.innerHTML = '<p class="error-message">Unable to find selected party.</p>';
+            if (!selectedStage) {
+                elements.mainScoreboardContent.innerHTML = '<p class="loading">Select a competition stage to continue.</p>';
                 return;
             }
 
-            const competition = party.get('whichComp');
-            if (!competition) {
-                elements.mainScoreboardContent.innerHTML = '<p class="loading">This party has no linked competition.</p>';
+            const selectedPartyIds = getSelectedMainScoreboardPartyIds();
+            if (!selectedPartyIds.length) {
+                elements.mainScoreboardContent.innerHTML = '<p class="loading">Select one or more parties to continue.</p>';
                 return;
             }
 
-            songs = await fetchSongsForCompetition(competition);
-            votes = await fetchScoreboardVotes({ partyId });
-            partyLabel = `Party: ${party.get('Name') || 'Unnamed Party'}`;
-            stageLabel = `Stage: ${getCompetitionLabel(competition)}`;
+            const selectedParties = getAllUserParties().filter(party => selectedPartyIds.includes(party.id));
+            if (!selectedParties.length) {
+                elements.mainScoreboardContent.innerHTML = '<p class="error-message">Unable to find selected parties.</p>';
+                return;
+            }
+
+            const { partyItems, combinedItem } = await buildMainScoreboardPartySourceItems(selectedParties);
+            if (!partyItems.length) {
+                elements.mainScoreboardContent.innerHTML = '<p class="loading">Selected parties do not have linked competitions.</p>';
+                return;
+            }
+
+            const mode = getMainScoreboardPartySelectionMode();
+            const isSequentialMode = mode === 'sequential' || mode === 'sequential-with-combined';
+            const sequenceItems = mode === 'sequential-with-combined'
+                ? [combinedItem, ...partyItems]
+                : partyItems;
+
+            if (selectedPartyIds.length > 1 && isSequentialMode) {
+                elements.mainScoreboardSequenceNextBtn.classList.remove('hidden');
+            }
+
+            if (selectedPartyIds.length > 1 && isSequentialMode) {
+                if (advanceSequential) {
+                    state.mainScoreboardSequenceIndex = (state.mainScoreboardSequenceIndex + 1) % sequenceItems.length;
+                } else if (state.mainScoreboardSequenceIndex >= sequenceItems.length) {
+                    resetMainScoreboardSequenceIndex();
+                }
+
+                const item = sequenceItems[state.mainScoreboardSequenceIndex];
+                songs = item.songs || [];
+                votes = item.votes || [];
+                partyLabel = item.partyLabel;
+                stageLabel = item.stageLabel;
+                sequenceLabel = `View ${state.mainScoreboardSequenceIndex + 1}/${sequenceItems.length}`;
+            } else {
+                const item = selectedPartyIds.length > 1 ? combinedItem : partyItems[0];
+                songs = item.songs || [];
+                votes = item.votes || [];
+                partyLabel = item.partyLabel;
+                stageLabel = item.stageLabel;
+                resetMainScoreboardSequenceIndex();
+            }
         } else if (sourceType === 'competition') {
             const competitionId = elements.mainScoreboardCompetitionSelect.value;
             if (!competitionId) {
@@ -1817,12 +2069,13 @@ async function loadMainScoreboard({ runRefreshAnimation = false } = {}) {
             votes = await fetchScoreboardVotes({ competitionId });
             partyLabel = 'Party: All Parties';
             stageLabel = `Stage: ${getCompetitionLabel(competition)}`;
+            resetMainScoreboardSequenceIndex();
         }
 
         const scoreboardData = buildMainScoreboardData(votes, songs);
         await renderMainEurovisionScoreboard(scoreboardData, { runRefreshAnimation });
 
-        const contextLabel = [partyLabel, stageLabel].filter(Boolean).join(' • ');
+        const contextLabel = [partyLabel, stageLabel, sequenceLabel].filter(Boolean).join(' • ');
         elements.mainScoreboardContext.textContent = contextLabel;
         elements.mainScoreboardContext.style.display = contextLabel ? 'block' : 'none';
         recalculateMainScoreboardCellSizing();

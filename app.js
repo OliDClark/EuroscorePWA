@@ -10,7 +10,7 @@ Parse.initialize(PARSE_CONFIG.appId, PARSE_CONFIG.javascriptKey);
 Parse.serverURL = PARSE_CONFIG.serverURL;
 console.log('Parse Config:', PARSE_CONFIG);
 
-const APP_VERSION = 'v1.0.12';
+const APP_VERSION = 'v1.0.13';
 const SCOREBOARD_QUERY_LIMIT = 10000;
 const EUROVISION_POINTS_MULTIPLIER = 116;
 const MAIN_SCOREBOARD_ANIMATION_DURATION_MS = 3000;
@@ -1472,6 +1472,7 @@ async function handleCounterVoteSubmit() {
         
         const partyPointer = Parties.createWithoutData(state.currentParty.id);
         const songPointer = Songs.createWithoutData(songId);
+        const comp = state.currentParty.get('whichComp');
         
         // Query for existing vote from this user for this song
         const query = new Parse.Query(Thumbs);
@@ -1487,6 +1488,9 @@ async function handleCounterVoteSubmit() {
             vote.set('whoseVote', state.currentUser);
             vote.set('whichParty', partyPointer);
             vote.set('songDeets', songPointer);
+        }
+        if (comp && !vote.get('whichComp')) {
+            vote.set('whichComp', comp);
         }
 
         vote.set('thumbsUp', state.pendingCounterVotes.up || 0);

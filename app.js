@@ -1472,6 +1472,7 @@ async function handleCounterVoteSubmit() {
         
         const partyPointer = Parties.createWithoutData(state.currentParty.id);
         const songPointer = Songs.createWithoutData(songId);
+        const comp = state.currentParty.get('whichComp');
         
         // Query for existing vote from this user for this song
         const query = new Parse.Query(Thumbs);
@@ -1487,6 +1488,9 @@ async function handleCounterVoteSubmit() {
             vote.set('whoseVote', state.currentUser);
             vote.set('whichParty', partyPointer);
             vote.set('songDeets', songPointer);
+        }
+        if (comp && !vote.get('whichComp')) {
+            vote.set('whichComp', comp);
         }
 
         vote.set('thumbsUp', state.pendingCounterVotes.up || 0);

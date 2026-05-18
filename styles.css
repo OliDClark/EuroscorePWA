@@ -706,6 +706,7 @@ body {
 
 .main-scoreboard-back-toggle,
 .main-scoreboard-fit-toggle,
+.main-scoreboard-sequence-toggle,
 .main-scoreboard-refresh-toggle,
 .main-scoreboard-settings-toggle {
     width: 38px;
@@ -716,6 +717,18 @@ body {
     align-items: center;
     justify-content: center;
     font-size: 1.15rem;
+}
+
+#main-scoreboard-party-select {
+    min-height: 140px;
+}
+
+.main-scoreboard-party-help {
+    margin-top: 6px;
+    margin-bottom: 0;
+    font-size: 0.78rem;
+    color: #dbe8ff;
+    opacity: 0.88;
 }
 
 .main-scoreboard-refresh-toggle.is-loading {

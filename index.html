@@ -124,6 +124,7 @@
                         <div class="main-scoreboard-action-buttons">
                             <button id="main-scoreboard-back-btn" class="btn btn-small main-scoreboard-back-toggle" type="button" aria-label="Back to parties" title="Back to parties">←</button>
                             <button id="main-scoreboard-fit-btn" class="btn btn-small main-scoreboard-fit-toggle" type="button" aria-label="Fit cells to screen" title="Fit cells to screen">⤢</button>
+                            <button id="main-scoreboard-sequence-next-btn" class="btn btn-small main-scoreboard-sequence-toggle hidden" type="button" aria-label="Next selected scoreboard" title="Next selected scoreboard">⏭</button>
                             <button id="main-refresh-scores-btn" class="btn btn-small main-scoreboard-refresh-toggle" type="button" aria-label="Refresh scoreboard" title="Refresh scoreboard">⟳</button>
                             <button id="main-scoreboard-settings-toggle" class="btn btn-small main-scoreboard-settings-toggle" type="button" aria-label="Scoreboard settings" title="Scoreboard settings">⚙️</button>
                         </div>
@@ -137,10 +138,24 @@
                             </select>
 
                             <div id="main-scoreboard-party-selector-wrap" class="hidden">
-                                <div class="form-label">Select party</div>
-                                <select id="main-scoreboard-party-select" class="form-select">
-                                    <option value="">Select a party...</option>
+                                <div class="form-label">Select parties</div>
+                                <select id="main-scoreboard-party-year-select" class="form-select">
+                                    <option value="">Select a year...</option>
                                 </select>
+                                <select id="main-scoreboard-party-stage-select" class="form-select">
+                                    <option value="">Select a competition stage...</option>
+                                </select>
+                                <select id="main-scoreboard-party-select" class="form-select" multiple size="6" aria-label="Select one or more parties">
+                                </select>
+                                <p class="main-scoreboard-party-help">Tip: hold Ctrl/Cmd to select multiple parties.</p>
+                                <div id="main-scoreboard-party-display-mode-wrap" class="hidden">
+                                    <div class="form-label">Display mode</div>
+                                    <select id="main-scoreboard-party-display-mode-select" class="form-select">
+                                        <option value="combined">Combined</option>
+                                        <option value="sequential">Sequential</option>
+                                        <option value="sequential-with-combined">Sequential + Combined</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div id="main-scoreboard-competition-selector-wrap" class="hidden">

@@ -10,9 +10,17 @@ Parse.initialize(PARSE_CONFIG.appId, PARSE_CONFIG.javascriptKey);
 Parse.serverURL = PARSE_CONFIG.serverURL;
 console.log('Parse Config:', PARSE_CONFIG);
 
-const APP_VERSION = 'v1.0.5';
+const APP_VERSION = 'v1.0.12';
 const SCOREBOARD_QUERY_LIMIT = 10000;
 const EUROVISION_POINTS_MULTIPLIER = 116;
+const MAIN_SCOREBOARD_ANIMATION_DURATION_MS = 3000;
+const MAIN_SCOREBOARD_COLUMN_COUNT = 2;
+const MAIN_SCOREBOARD_MIN_ROW_HEIGHT_PX = 24;
+const MAIN_SCOREBOARD_MAX_ROW_HEIGHT_PX = 92;
+const MAIN_STAGING_MIN_TILE_HEIGHT_PX = 44;
+const MAIN_STAGING_MAX_TILE_HEIGHT_PX = 122;
+const MAIN_SCOREBOARD_SINGER_PLACEHOLDER = 'Singer TBC';
+const MAIN_SCOREBOARD_SONG_PLACEHOLDER = 'Song TBC';
 const PARSE_OBJECT_NOT_FOUND_ERROR_CODE = 101;
 const PARTY_NOT_FOUND = 'Party not found';
 const PARTY_NOT_FOUND_OR_PASSWORD_INCORRECT = 'Party not found or password incorrect';
@@ -95,7 +103,11 @@ const elements = {
     mainScoreboardCompetitionSelectorWrap: document.getElementById('main-scoreboard-competition-selector-wrap'),
     mainScoreboardPartySelect: document.getElementById('main-scoreboard-party-select'),
     mainScoreboardCompetitionSelect: document.getElementById('main-scoreboard-competition-select'),
+    mainScoreboardBackBtn: document.getElementById('main-scoreboard-back-btn'),
+    mainScoreboardFitBtn: document.getElementById('main-scoreboard-fit-btn'),
     mainRefreshScoresBtn: document.getElementById('main-refresh-scores-btn'),
+    mainScoreboardSettingsToggle: document.getElementById('main-scoreboard-settings-toggle'),
+    mainScoreboardControls: document.getElementById('main-scoreboard-controls'),
     mainScoreboardContent: document.getElementById('main-scoreboard-content'),
     mainScoreboardContext: document.getElementById('main-scoreboard-context'),
     
@@ -294,7 +306,10 @@ function setupEventListeners() {
     elements.createPartyBtn.addEventListener('click', handleCreateParty);
     elements.backToMainBtn.addEventListener('click', showMainScreen);
     elements.refreshScoresBtn.addEventListener('click', loadScoreboard);
-    elements.mainRefreshScoresBtn.addEventListener('click', loadMainScoreboard);
+    elements.mainScoreboardBackBtn.addEventListener('click', () => switchTab('my-parties'));
+    elements.mainScoreboardFitBtn.addEventListener('click', recalculateMainScoreboardCellSizing);
+    elements.mainRefreshScoresBtn.addEventListener('click', () => loadMainScoreboard({ runRefreshAnimation: true }));
+    elements.mainScoreboardSettingsToggle.addEventListener('click', toggleMainScoreboardControls);
     elements.mainScoreboardSourceSelect.addEventListener('change', handleMainScoreboardSourceChange);
     elements.mainScoreboardPartySelect.addEventListener('change', loadMainScoreboard);
     elements.mainScoreboardCompetitionSelect.addEventListener('change', loadMainScoreboard);
@@ -323,6 +338,8 @@ function setupEventListeners() {
 }
 
 function switchTab(tab) {
+    elements.mainScreen.classList.toggle('scoreboard-main-mode', tab === 'scoreboard-main');
+
     // Update buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tab);
@@ -585,7 +602,14 @@ function populateMainScoreboardCompetitionOptions() {
 function prepareMainScoreboardTab() {
     populateMainScoreboardPartyOptions();
     populateMainScoreboardCompetitionOptions();
+    elements.mainScoreboardControls.classList.add('hidden');
+    elements.mainScoreboardSettingsToggle.classList.remove('active');
     handleMainScoreboardSourceChange();
+}
+
+function toggleMainScoreboardControls() {
+    elements.mainScoreboardControls.classList.toggle('hidden');
+    elements.mainScoreboardSettingsToggle.classList.toggle('active', !elements.mainScoreboardControls.classList.contains('hidden'));
 }
 
 function handleMainScoreboardSourceChange() {
@@ -1726,20 +1750,27 @@ async function refreshSongVoteDisplay(songId, voteValue) {
     }
 }
 
-async function loadMainScoreboard() {
+async function loadMainScoreboard({ runRefreshAnimation = false } = {}) {
     const sourceType = elements.mainScoreboardSourceSelect.value;
-    elements.mainScoreboardContent.innerHTML = '<p class="loading">Loading rankings...</p>';
-    elements.mainScoreboardContext.style.display = 'none';
+    if (!elements.mainScoreboardContent.querySelector('.main-scoreboard-layout')) {
+        elements.mainScoreboardContent.innerHTML = '<p class="loading">Loading rankings...</p>';
+    }
 
     if (!sourceType) {
         elements.mainScoreboardContent.innerHTML = '<p class="loading">Choose a source to view the scoreboard.</p>';
+        elements.mainScoreboardContext.style.display = 'none';
         return;
     }
+
+    elements.mainRefreshScoresBtn.disabled = true;
+    elements.mainRefreshScoresBtn.classList.add('is-loading');
+    elements.mainRefreshScoresBtn.setAttribute('aria-busy', 'true');
 
     try {
         let songs = [];
         let votes = [];
-        let contextLabel = '';
+        let partyLabel = '';
+        let stageLabel = '';
 
         if (sourceType === 'party') {
             const partyId = elements.mainScoreboardPartySelect.value;
@@ -1762,7 +1793,8 @@ async function loadMainScoreboard() {
 
             songs = await fetchSongsForCompetition(competition);
             votes = await fetchScoreboardVotes({ partyId });
-            contextLabel = `Party: ${party.get('Name') || 'Unnamed Party'} • ${getCompetitionLabel(competition)}`;
+            partyLabel = `Party: ${party.get('Name') || 'Unnamed Party'}`;
+            stageLabel = `Stage: ${getCompetitionLabel(competition)}`;
         } else if (sourceType === 'competition') {
             const competitionId = elements.mainScoreboardCompetitionSelect.value;
             if (!competitionId) {
@@ -1779,17 +1811,24 @@ async function loadMainScoreboard() {
 
             songs = await fetchSongsForCompetition(competition);
             votes = await fetchScoreboardVotes({ competitionId });
-            contextLabel = `Competition: ${getCompetitionLabel(competition)}`;
+            partyLabel = 'Party: All Parties';
+            stageLabel = `Stage: ${getCompetitionLabel(competition)}`;
         }
 
-        const rankings = buildCountryRankings(votes, songs);
-        renderMainEurovisionScoreboard(rankings);
+        const scoreboardData = buildMainScoreboardData(votes, songs);
+        await renderMainEurovisionScoreboard(scoreboardData, { runRefreshAnimation });
 
+        const contextLabel = [partyLabel, stageLabel].filter(Boolean).join(' • ');
         elements.mainScoreboardContext.textContent = contextLabel;
         elements.mainScoreboardContext.style.display = contextLabel ? 'block' : 'none';
+        recalculateMainScoreboardCellSizing();
     } catch (error) {
         console.error('Error loading main scoreboard:', error);
         elements.mainScoreboardContent.innerHTML = '<p class="error-message">Failed to load scoreboard</p>';
+    } finally {
+        elements.mainRefreshScoresBtn.disabled = false;
+        elements.mainRefreshScoresBtn.classList.remove('is-loading');
+        elements.mainRefreshScoresBtn.removeAttribute('aria-busy');
     }
 }
 
@@ -1901,37 +1940,404 @@ function buildCountryRankings(votes, songs) {
     return rankings;
 }
 
-function renderMainEurovisionScoreboard(rankings) {
-    if (!rankings || rankings.length === 0) {
+function buildMainScoreboardData(votes, songs) {
+    const rankings = buildCountryRankings(votes, songs);
+    const rankingByCountry = new Map(rankings.map(country => [country.countryName, country]));
+    const countriesByOrder = [];
+    const countryMap = new Map();
+
+    (songs || []).forEach((song, index) => {
+        const countryName = song.get('countryName') || song.get('CountryName') || 'Unknown';
+        if (countryMap.has(countryName)) {
+            return;
+        }
+
+        const country = {
+            countryName,
+            countryCode: song.get('countryCode') || song.get('CountryCode') || '',
+            singer: song.get('singer') || song.get('Singer') || '',
+            songTitle: song.get('song') || song.get('Song') || '',
+            performanceOrder: index + 1
+        };
+
+        countryMap.set(countryName, country);
+        countriesByOrder.push(country);
+    });
+
+    const votedCountries = rankings.filter(country => country.totalVotes > 0);
+    const unvotedCountries = countriesByOrder.filter(country => {
+        const rankedCountry = rankingByCountry.get(country.countryName);
+        return !rankedCountry || rankedCountry.totalVotes === 0;
+    });
+
+    return {
+        votedCountries,
+        unvotedCountries,
+        nextPerformer: unvotedCountries[0] || null
+    };
+}
+
+function renderMainScoreboardRows(countries) {
+    if (!countries || countries.length === 0) {
+        return '<p class="loading">No countries have received votes yet.</p>';
+    }
+
+    return countries.map((country, index) => {
+        if (!country) {
+            return `<div class="main-scoreboard-row main-scoreboard-row-placeholder" data-slot="${index + 1}"></div>`;
+        }
+
+        const flag = country.countryCode ? getCountryFlag(country.countryCode) : '🏳️';
+        const singer = escapeHtml(country.singer || MAIN_SCOREBOARD_SINGER_PLACEHOLDER);
+        const songTitle = escapeHtml(country.songTitle || MAIN_SCOREBOARD_SONG_PLACEHOLDER);
+
+        return `
+            <div class="main-scoreboard-row" data-country="${escapeHtml(country.countryName)}">
+                <div class="main-scoreboard-rank">${country.rank || (index + 1)}</div>
+                <div class="main-scoreboard-flag" aria-hidden="true">${flag}</div>
+                <div class="main-scoreboard-country-block">
+                    <div class="main-scoreboard-country-meta-row">
+                        <span class="main-scoreboard-country">${escapeHtml(country.countryName)}</span>
+                        <div class="main-scoreboard-artist-stack">
+                            <span class="main-scoreboard-singer">${singer}</span>
+                            <span class="main-scoreboard-song">${songTitle}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="main-scoreboard-points">${country.points || 0}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function arrangeForVerticalColumns(countries, columnCount = 2) {
+    if (!Array.isArray(countries) || countries.length <= 1 || columnCount < 2) {
+        return countries || [];
+    }
+
+    const rowsPerColumn = Math.ceil(countries.length / columnCount);
+    const ordered = [];
+    for (let rowIndex = 0; rowIndex < rowsPerColumn; rowIndex += 1) {
+        for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+            const sourceIndex = rowIndex + (columnIndex * rowsPerColumn);
+            if (sourceIndex < countries.length) {
+                ordered.push(countries[sourceIndex]);
+            }
+        }
+    }
+
+    return ordered;
+}
+
+function renderMainStagingRows(countries) {
+    if (!countries.length) {
+        return '<p class="loading">No countries waiting to perform.</p>';
+    }
+
+    return countries.map(country => {
+        const flag = country.countryCode ? getCountryFlag(country.countryCode) : '🏳️';
+        return `
+            <div class="main-scoreboard-staging-country" data-flag="${flag}" data-country="${escapeHtml(country.countryName)}">
+                <div class="main-scoreboard-staging-order">#${country.performanceOrder}</div>
+                <div class="main-scoreboard-staging-country-name">${escapeHtml(country.countryName)}</div>
+                <div class="main-scoreboard-staging-singer">${escapeHtml(country.singer || MAIN_SCOREBOARD_SINGER_PLACEHOLDER)}</div>
+                <div class="main-scoreboard-staging-song">${escapeHtml(country.songTitle || MAIN_SCOREBOARD_SONG_PLACEHOLDER)}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+}
+
+function getMainScoreboardGap(availableHeight, rowsPerColumn) {
+    if (!availableHeight || !rowsPerColumn) {
+        return 8;
+    }
+
+    return clamp(Math.floor(availableHeight / Math.max(rowsPerColumn * 14, 1)), 4, 8);
+}
+
+function applyMainScoreboardRowSizing(container) {
+    if (!container) {
+        return;
+    }
+
+    const cellCount = container.querySelectorAll('.main-scoreboard-row').length;
+    if (!cellCount) {
+        return;
+    }
+
+    const rowsPerColumn = Math.ceil(cellCount / MAIN_SCOREBOARD_COLUMN_COUNT);
+    const availableHeight = container.clientHeight;
+    if (!availableHeight || !rowsPerColumn) {
+        return;
+    }
+
+    const gap = getMainScoreboardGap(availableHeight, rowsPerColumn);
+    const rowHeight = clamp(
+        Math.floor((availableHeight - (gap * Math.max(rowsPerColumn - 1, 0))) / rowsPerColumn),
+        MAIN_SCOREBOARD_MIN_ROW_HEIGHT_PX,
+        MAIN_SCOREBOARD_MAX_ROW_HEIGHT_PX
+    );
+    const compactness = clamp(
+        (rowHeight - MAIN_SCOREBOARD_MIN_ROW_HEIGHT_PX) / (MAIN_SCOREBOARD_MAX_ROW_HEIGHT_PX - MAIN_SCOREBOARD_MIN_ROW_HEIGHT_PX),
+        0,
+        1
+    );
+
+    container.style.setProperty('--main-scoreboard-row-gap', `${gap}px`);
+    container.style.setProperty('--main-scoreboard-row-height', `${rowHeight}px`);
+    container.style.setProperty('--main-scoreboard-row-padding-y', `${Math.round(4 + (compactness * 6))}px`);
+    container.style.setProperty('--main-scoreboard-row-padding-x', `${Math.round(6 + (compactness * 6))}px`);
+    container.style.setProperty('--main-scoreboard-row-inner-gap', `${Math.round(5 + (compactness * 5))}px`);
+    container.style.setProperty('--main-scoreboard-rank-width', `${Math.max(34, Math.round(rowHeight * 0.92))}px`);
+    container.style.setProperty('--main-scoreboard-rank-font-size', `${Math.round(rowHeight * 0.7)}px`);
+    const flagSize = Math.max(20, rowHeight - (Math.round(4 + (compactness * 6)) * 2) - 2);
+    container.style.setProperty('--main-scoreboard-flag-size', `${flagSize}px`);
+    container.style.setProperty('--main-scoreboard-flag-font-size', `${Math.round(flagSize * 0.82)}px`);
+    container.style.setProperty('--main-scoreboard-country-font-size', `${Math.round(rowHeight * 0.66)}px`);
+    container.style.setProperty('--main-scoreboard-meta-font-size', `${Math.max(9, Math.round(rowHeight * 0.3))}px`);
+    container.style.setProperty('--main-scoreboard-meta-line-height', `${Math.max(10, Math.round(rowHeight * 0.31))}px`);
+    container.style.setProperty('--main-scoreboard-points-width', `${Math.round(rowHeight * 0.95)}px`);
+    container.style.setProperty('--main-scoreboard-points-font-size', `${Math.round(rowHeight * 0.38)}px`);
+    container.style.setProperty('--main-scoreboard-points-padding-y', `${Math.max(2, Math.round(2 + (compactness * 2)))}px`);
+    container.style.setProperty('--main-scoreboard-points-padding-x', `${Math.max(4, Math.round(4 + (compactness * 4)))}px`);
+}
+
+function applyMainStagingTileSizing(container) {
+    if (!container) {
+        return;
+    }
+
+    const cellCount = container.querySelectorAll('.main-scoreboard-staging-country').length;
+    if (!cellCount) {
+        return;
+    }
+
+    const rowsPerColumn = Math.ceil(cellCount / MAIN_SCOREBOARD_COLUMN_COUNT);
+    const availableHeight = container.clientHeight;
+    if (!availableHeight || !rowsPerColumn) {
+        return;
+    }
+
+    const gap = getMainScoreboardGap(availableHeight, rowsPerColumn);
+    const tileHeight = clamp(
+        Math.floor((availableHeight - (gap * Math.max(rowsPerColumn - 1, 0))) / rowsPerColumn),
+        MAIN_STAGING_MIN_TILE_HEIGHT_PX,
+        MAIN_STAGING_MAX_TILE_HEIGHT_PX
+    );
+    const compactness = clamp(
+        (tileHeight - MAIN_STAGING_MIN_TILE_HEIGHT_PX) / (MAIN_STAGING_MAX_TILE_HEIGHT_PX - MAIN_STAGING_MIN_TILE_HEIGHT_PX),
+        0,
+        1
+    );
+    const flagSize = tileHeight - 4;
+    const flagOffset = Math.round(6 + (compactness * 2));
+    const flagSpace = flagSize + flagOffset + 10;
+
+    container.style.setProperty('--main-staging-grid-gap', `${gap}px`);
+    container.style.setProperty('--main-staging-tile-height', `${tileHeight}px`);
+    container.style.setProperty('--main-staging-padding-y', `${Math.round(4 + (compactness * 4))}px`);
+    container.style.setProperty('--main-staging-padding-left', `${Math.round(6 + (compactness * 2))}px`);
+    container.style.setProperty('--main-staging-flag-space', `${flagSpace}px`);
+    container.style.setProperty('--main-staging-flag-right', `${flagOffset}px`);
+    container.style.setProperty('--main-staging-flag-size', `${flagSize}px`);
+    container.style.setProperty('--main-staging-flag-font-size', `${Math.round(flagSize * 0.72)}px`);
+    container.style.setProperty('--main-staging-order-font-size', `${(0.5 + (compactness * 0.24)).toFixed(2)}rem`);
+    container.style.setProperty('--main-staging-country-font-size', `${(1.24 + (compactness * 0.56)).toFixed(2)}rem`);
+    container.style.setProperty('--main-staging-meta-font-size', `${(0.75 + (compactness * 0.375)).toFixed(2)}rem`);
+}
+
+function recalculateMainScoreboardCellSizing() {
+    if (!elements.mainScoreboardContent.querySelector('.main-scoreboard-layout')) {
+        return;
+    }
+
+    applyMainScoreboardRowSizing(elements.mainScoreboardContent.querySelector('.main-scoreboard-rows'));
+    applyMainStagingTileSizing(elements.mainScoreboardContent.querySelector('.main-scoreboard-staging-grid'));
+}
+
+async function animateMainScoreboardRows(container, countries, durationMs) {
+    const previousPositions = new Map();
+    container.querySelectorAll('.main-scoreboard-row[data-country]').forEach(row => {
+        previousPositions.set(row.dataset.country, row.getBoundingClientRect());
+    });
+
+    container.innerHTML = renderMainScoreboardRows(countries);
+    recalculateMainScoreboardCellSizing();
+    if (!countries || !countries.length) {
+        return;
+    }
+
+    container.querySelectorAll('.main-scoreboard-row[data-country]').forEach(row => {
+        const previousPosition = previousPositions.get(row.dataset.country);
+        if (!previousPosition) {
+            row.classList.add('main-scoreboard-row-new');
+            // Use double RAF so the opacity-0 state is painted before removing the class.
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => row.classList.remove('main-scoreboard-row-new'));
+            });
+            return;
+        }
+
+        const nextPosition = row.getBoundingClientRect();
+        const deltaX = previousPosition.left - nextPosition.left;
+        const deltaY = previousPosition.top - nextPosition.top;
+        if (!deltaX && !deltaY) {
+            return;
+        }
+
+        row.style.transition = 'none';
+        row.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+        requestAnimationFrame(() => {
+            row.style.transition = `transform ${durationMs}ms ease`;
+            row.style.transform = 'translate(0, 0)';
+        });
+        const cleanupRowAnimation = () => {
+            row.style.transition = '';
+            row.style.transform = '';
+        };
+
+        const cleanupTimeout = setTimeout(() => {
+            row.removeEventListener('transitionend', handleAnimationEnd);
+            cleanupRowAnimation();
+        }, durationMs + 50);
+
+        function handleAnimationEnd(event) {
+            if (event.propertyName !== 'transform') {
+                return;
+            }
+            clearTimeout(cleanupTimeout);
+            row.removeEventListener('transitionend', handleAnimationEnd);
+            cleanupRowAnimation();
+        }
+
+        row.addEventListener('transitionend', handleAnimationEnd);
+    });
+
+    await wait(durationMs);
+}
+
+async function animateMainStagingRows(container, countries, durationMs) {
+    const previousPositions = new Map();
+    container.querySelectorAll('.main-scoreboard-staging-country').forEach(countryCard => {
+        previousPositions.set(countryCard.dataset.country, countryCard.getBoundingClientRect());
+    });
+
+    container.innerHTML = renderMainStagingRows(countries);
+    recalculateMainScoreboardCellSizing();
+    if (!countries || !countries.length) {
+        return;
+    }
+
+    container.querySelectorAll('.main-scoreboard-staging-country').forEach(countryCard => {
+        const previousPosition = previousPositions.get(countryCard.dataset.country);
+        if (!previousPosition) {
+            countryCard.classList.add('main-scoreboard-row-new');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => countryCard.classList.remove('main-scoreboard-row-new'));
+            });
+            return;
+        }
+
+        const nextPosition = countryCard.getBoundingClientRect();
+        const deltaX = previousPosition.left - nextPosition.left;
+        const deltaY = previousPosition.top - nextPosition.top;
+        if (!deltaX && !deltaY) {
+            return;
+        }
+
+        countryCard.style.transition = 'none';
+        countryCard.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+        requestAnimationFrame(() => {
+            countryCard.style.transition = `transform ${durationMs}ms ease`;
+            countryCard.style.transform = 'translate(0, 0)';
+        });
+    });
+
+    await wait(durationMs);
+}
+
+async function renderMainEurovisionScoreboard(scoreboardData, { runRefreshAnimation = false } = {}) {
+    const { votedCountries, unvotedCountries, nextPerformer } = scoreboardData || {};
+    if (!scoreboardData) {
         elements.mainScoreboardContent.innerHTML = '<p class="loading">No song votes found for this selection.</p>';
         return;
     }
 
-    const midpoint = Math.ceil(rankings.length / 2);
-    const left = rankings.slice(0, midpoint);
-    const right = rankings.slice(midpoint);
+    if (!elements.mainScoreboardContent.querySelector('.main-scoreboard-layout')) {
+        elements.mainScoreboardContent.innerHTML = `
+        <div class="main-scoreboard-layout">
+            <div class="main-scoreboard-panel main-scoreboard-panel-left">
+                <h4 class="main-scoreboard-panel-title">Scoreboard</h4>
+                <div class="main-scoreboard-rows"></div>
+            </div>
+            <div class="main-scoreboard-panel main-scoreboard-panel-right">
+                <h4 class="main-scoreboard-panel-title">Staging Area</h4>
+                <div class="main-scoreboard-next-performer"></div>
+                <div class="main-scoreboard-staging-grid"></div>
+            </div>
+        </div>
+        `;
+    }
 
-    const renderRows = (rows, offset) => rows.map((country, index) => {
-        const rank = offset + index + 1;
-        const flag = country.countryCode ? getCountryFlag(country.countryCode) : '🏳️';
-        return `
-            <div class="eurovision-score-row">
-                <div class="eurovision-score-country">
-                    <span class="eurovision-score-rank">${rank}</span>
-                    <span class="eurovision-score-flag">${flag}</span>
-                    <span class="eurovision-score-name">${escapeHtml(country.countryName)}</span>
+    const rowsContainer = elements.mainScoreboardContent.querySelector('.main-scoreboard-rows');
+    const nextPerformerContainer = elements.mainScoreboardContent.querySelector('.main-scoreboard-next-performer');
+    const stagingGridContainer = elements.mainScoreboardContent.querySelector('.main-scoreboard-staging-grid');
+    const rankedVotedCountries = (votedCountries || []).map((country, index) => ({
+        ...country,
+        rank: index + 1
+    }));
+    const totalCompetingCountries = (votedCountries || []).length + (unvotedCountries || []).length;
+    const scoreboardSlots = [
+        ...rankedVotedCountries,
+        ...Array.from({ length: Math.max(totalCompetingCountries - rankedVotedCountries.length, 0) }, () => null)
+    ];
+    const orderedScoreboardSlots = arrangeForVerticalColumns(scoreboardSlots);
+
+    if (nextPerformer) {
+        const flag = nextPerformer.countryCode ? getCountryFlag(nextPerformer.countryCode) : '🏳️';
+        nextPerformerContainer.innerHTML = `
+            <div class="main-scoreboard-next-card">
+                <div class="main-scoreboard-next-label">Next to perform</div>
+                <div class="main-scoreboard-next-row">
+                    <div class="main-scoreboard-next-order">${nextPerformer.performanceOrder}</div>
+                    <div class="main-scoreboard-next-flag" aria-hidden="true">${flag}</div>
+                    <div class="main-scoreboard-next-details">
+                        <div class="main-scoreboard-next-country">${escapeHtml(nextPerformer.countryName)}</div>
+                        <div class="main-scoreboard-next-artist-stack">
+                            <div class="main-scoreboard-next-singer">${escapeHtml(nextPerformer.singer || MAIN_SCOREBOARD_SINGER_PLACEHOLDER)}</div>
+                            <div class="main-scoreboard-next-song">${escapeHtml(nextPerformer.songTitle || MAIN_SCOREBOARD_SONG_PLACEHOLDER)}</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="eurovision-score-points">${country.points}</div>
             </div>
         `;
-    }).join('');
+    } else {
+        nextPerformerContainer.innerHTML = '<p class="loading">All countries have received votes.</p>';
+    }
 
-    elements.mainScoreboardContent.innerHTML = `
-        <div class="eurovision-scoreboard-grid">
-            <div class="eurovision-scoreboard-column">${renderRows(left, 0)}</div>
-            <div class="eurovision-scoreboard-column">${renderRows(right, midpoint)}</div>
-        </div>
-    `;
+    const stagingCountries = (unvotedCountries || []).filter(country => {
+        return !nextPerformer || country.countryName !== nextPerformer.countryName;
+    });
+    const orderedStagingCountries = arrangeForVerticalColumns(stagingCountries);
+
+    if (runRefreshAnimation) {
+        await animateMainScoreboardRows(rowsContainer, orderedScoreboardSlots, MAIN_SCOREBOARD_ANIMATION_DURATION_MS);
+        await animateMainStagingRows(stagingGridContainer, orderedStagingCountries, MAIN_SCOREBOARD_ANIMATION_DURATION_MS);
+        recalculateMainScoreboardCellSizing();
+        return;
+    }
+
+    rowsContainer.innerHTML = renderMainScoreboardRows(orderedScoreboardSlots);
+    stagingGridContainer.innerHTML = renderMainStagingRows(orderedStagingCountries);
+    recalculateMainScoreboardCellSizing();
 }
 
 async function loadScoreboard() {

@@ -121,7 +121,14 @@
                 <div id="scoreboard-main-tab" class="tab-content hidden">
                     <div class="scoreboard">
                         <h3>🏆 Eurovision Scoreboard</h3>
-                        <div class="form-group scoreboard-selector-group">
+                        <div class="main-scoreboard-action-buttons">
+                            <button id="main-scoreboard-back-btn" class="btn btn-small main-scoreboard-back-toggle" type="button" aria-label="Back to parties" title="Back to parties">←</button>
+                            <button id="main-scoreboard-fit-btn" class="btn btn-small main-scoreboard-fit-toggle" type="button" aria-label="Fit cells to screen" title="Fit cells to screen">⤢</button>
+                            <button id="main-refresh-scores-btn" class="btn btn-small main-scoreboard-refresh-toggle" type="button" aria-label="Refresh scoreboard" title="Refresh scoreboard">⟳</button>
+                            <button id="main-scoreboard-settings-toggle" class="btn btn-small main-scoreboard-settings-toggle" type="button" aria-label="Scoreboard settings" title="Scoreboard settings">⚙️</button>
+                        </div>
+
+                        <div id="main-scoreboard-controls" class="form-group scoreboard-selector-group main-scoreboard-controls hidden">
                             <div class="form-label">Scoreboard source</div>
                             <select id="main-scoreboard-source-select" class="form-select">
                                 <option value="">Select source...</option>
@@ -142,8 +149,6 @@
                                     <option value="">Select a competition...</option>
                                 </select>
                             </div>
-
-                            <button id="main-refresh-scores-btn" class="btn btn-secondary">Show Scoreboard</button>
                         </div>
 
                         <p id="main-scoreboard-context" class="competition-info"></p>

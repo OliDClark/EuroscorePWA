@@ -661,6 +661,7 @@ body {
     padding: 20px;
     border-radius: 12px;
     box-shadow: var(--shadow);
+    position: relative;
 }
 
 .scoreboard h3 {
@@ -677,68 +678,424 @@ body {
     margin-bottom: 20px;
 }
 
+.main-scoreboard-controls {
+    position: absolute;
+    top: 52px;
+    right: 12px;
+    width: min(360px, calc(100% - 24px));
+    margin: 0;
+    padding: 10px;
+    border-radius: 10px;
+    background: rgba(10, 16, 30, 0.95);
+    backdrop-filter: blur(6px);
+    z-index: 20;
+}
+
+.main-scoreboard-action-buttons {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    display: flex;
+    gap: 8px;
+    z-index: 25;
+}
+
+.main-scoreboard-controls .form-label {
+    color: #dbe8ff;
+}
+
+.main-scoreboard-back-toggle,
+.main-scoreboard-fit-toggle,
+.main-scoreboard-refresh-toggle,
+.main-scoreboard-settings-toggle {
+    width: 38px;
+    height: 34px;
+    margin: 0;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+}
+
+.main-scoreboard-refresh-toggle.is-loading {
+    opacity: 0.8;
+    animation: main-scoreboard-spin 0.85s linear infinite;
+}
+
+@keyframes main-scoreboard-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.main-scoreboard-settings-toggle.active {
+    background: #2b5ed7;
+    color: #fff;
+    border-color: #2b5ed7;
+}
+
 #main-scoreboard-context {
     display: none;
     margin-bottom: 15px;
     font-size: 1.2rem;
+    text-align: center;
+    font-weight: 600;
 }
 
-.eurovision-scoreboard-grid {
+.main-scoreboard-layout {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
     gap: 14px;
+    height: calc(100vh - 148px);
+    min-height: 420px;
 }
 
-.eurovision-scoreboard-column {
+.main-scoreboard-panel {
+    border-radius: 10px;
+    padding: 12px;
+    background: linear-gradient(140deg, #ffe8cb 0%, #ffd0a8 52%, #ffb97c 100%);
+    border: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    min-height: 0;
+    overflow: hidden;
 }
 
-.eurovision-score-row {
+.main-scoreboard-panel-title {
+    margin-bottom: 10px;
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.main-scoreboard-rows {
+    --main-scoreboard-row-height: clamp(72px, 8.4vh, 92px);
+    --main-scoreboard-row-gap: 8px;
+    --main-scoreboard-row-padding-y: 10px;
+    --main-scoreboard-row-padding-x: 12px;
+    --main-scoreboard-row-inner-gap: 10px;
+    --main-scoreboard-rank-width: 56px;
+    --main-scoreboard-rank-font-size: 2rem;
+    --main-scoreboard-flag-size: 48px;
+    --main-scoreboard-flag-font-size: 2rem;
+    --main-scoreboard-country-font-size: 1.8rem;
+    --main-scoreboard-meta-font-size: 0.8rem;
+    --main-scoreboard-meta-line-height: 0.9rem;
+    --main-scoreboard-points-width: 56px;
+    --main-scoreboard-points-font-size: 1rem;
+    --main-scoreboard-points-padding-y: 4px;
+    --main-scoreboard-points-padding-x: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: var(--main-scoreboard-row-height);
+    gap: var(--main-scoreboard-row-gap);
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding-right: 2px;
+}
+
+.main-scoreboard-row {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: var(--main-scoreboard-row-inner-gap);
+    height: 100%;
+    padding: var(--main-scoreboard-row-padding-y) var(--main-scoreboard-row-padding-x);
+    border-radius: 8px;
+    background: rgba(6, 11, 24, 0.9);
+    color: #fff;
+    transform: translateY(0);
+    box-sizing: border-box;
+}
+
+.main-scoreboard-row-new {
+    opacity: 0;
+    transition: opacity 450ms ease;
+}
+
+.main-scoreboard-country-block {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    padding-right: calc(var(--main-scoreboard-row-inner-gap) * 2);
+}
+
+.main-scoreboard-country-meta-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    background: #0b0f1a;
-    color: #fff;
+    gap: var(--main-scoreboard-row-inner-gap);
+    width: 100%;
 }
 
-.eurovision-score-country {
+.main-scoreboard-rank {
+    color: #9aa0a6;
+    width: var(--main-scoreboard-rank-width);
+    min-width: var(--main-scoreboard-rank-width);
+    flex: 0 0 var(--main-scoreboard-rank-width);
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    text-align: center;
+    font-weight: 800;
+    line-height: 1;
+    font-size: var(--main-scoreboard-rank-font-size);
+}
+
+.main-scoreboard-flag {
+    width: var(--main-scoreboard-flag-size);
+    min-width: var(--main-scoreboard-flag-size);
+    flex: 0 0 var(--main-scoreboard-flag-size);
+    height: var(--main-scoreboard-flag-size);
+    align-self: center;
+    border-radius: 50%;
+    font-size: var(--main-scoreboard-flag-font-size);
+    line-height: 1;
+    background: rgba(255, 255, 255, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.main-scoreboard-country {
+    flex: 1 1 auto;
     min-width: 0;
-}
-
-.eurovision-score-rank {
-    color: #9aa0a6;
-    min-width: 22px;
-    text-align: right;
-    font-weight: 600;
-}
-
-.eurovision-score-flag {
-    font-size: 1.2rem;
-}
-
-.eurovision-score-name {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-weight: 700;
+    line-height: 1;
+    font-size: var(--main-scoreboard-country-font-size);
+}
+
+.main-scoreboard-artist-stack {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-end;
+    text-align: right;
+    margin-left: auto;
+    flex: 0 1 44%;
+    min-width: 0;
+}
+
+.main-scoreboard-singer,
+.main-scoreboard-song {
+    font-size: var(--main-scoreboard-meta-font-size);
+    line-height: var(--main-scoreboard-meta-line-height);
+    color: #d1d7e0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.main-scoreboard-singer {
     font-weight: 600;
 }
 
-.eurovision-score-points {
+.main-scoreboard-points {
     background: #2b5ed7;
     color: #fff;
     border-radius: 6px;
-    min-width: 46px;
+    min-width: var(--main-scoreboard-points-width);
+    flex: 0 0 var(--main-scoreboard-points-width);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     font-weight: 700;
-    padding: 4px 8px;
+    line-height: 1;
+    font-size: var(--main-scoreboard-points-font-size);
+    padding: var(--main-scoreboard-points-padding-y) var(--main-scoreboard-points-padding-x);
+}
+
+.main-scoreboard-row-placeholder {
+    border: 1px dashed rgba(28, 45, 88, 0.45);
+    background: transparent;
+}
+
+.main-scoreboard-next-card {
+    --main-scoreboard-next-row-height: clamp(56px, 6.8vh, 78px);
+    --main-scoreboard-next-flag-size: calc(var(--main-scoreboard-next-row-height) - 4px);
+    border-radius: 10px;
+    padding: 8px 10px;
+    background: #141d33;
+    color: #fff;
+    box-shadow: 0 0 0 2px rgba(82, 158, 255, 0.7), 0 0 16px rgba(82, 158, 255, 0.8);
+}
+
+.main-scoreboard-next-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #dbe8ff;
+    margin-bottom: 6px;
+}
+
+.main-scoreboard-next-order {
+    width: 1.6em;
+    min-width: 1.6em;
+    flex: 0 0 1.6em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 1.25rem;
+    color: #bcd5ff;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.main-scoreboard-next-row {
+    display: flex;
+    align-items: center;
+    min-height: var(--main-scoreboard-next-row-height);
+    gap: 8px;
+}
+
+.main-scoreboard-next-flag {
+    width: var(--main-scoreboard-next-flag-size);
+    min-width: var(--main-scoreboard-next-flag-size);
+    flex: 0 0 var(--main-scoreboard-next-flag-size);
+    height: var(--main-scoreboard-next-flag-size);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.42);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    font-size: calc(var(--main-scoreboard-next-flag-size) * 0.7);
+}
+
+.main-scoreboard-next-details {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    flex: 1;
+}
+
+.main-scoreboard-next-country {
+    font-size: calc(var(--main-scoreboard-next-flag-size) * 0.82);
+    font-weight: 700;
+    line-height: 0.9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.main-scoreboard-next-artist-stack {
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+    min-width: 0;
+}
+
+.main-scoreboard-next-singer,
+.main-scoreboard-next-song {
+    font-size: 0.84rem;
+    color: #e9f0ff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.15;
+    max-width: 100%;
+}
+
+.main-scoreboard-next-singer {
+    font-weight: 600;
+}
+
+.main-scoreboard-staging-grid {
+    --main-staging-tile-height: clamp(92px, 11vh, 122px);
+    --main-staging-grid-gap: 8px;
+    --main-staging-padding-y: 8px;
+    --main-staging-padding-left: 8px;
+    --main-staging-flag-space: 70px;
+    --main-staging-flag-right: 8px;
+    --main-staging-flag-size: 118px;
+    --main-staging-flag-font-size: 3.5rem;
+    --main-staging-order-font-size: 0.74rem;
+    --main-staging-country-font-size: 1.8rem;
+    --main-staging-meta-font-size: 1.125rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: var(--main-staging-tile-height);
+    gap: var(--main-staging-grid-gap);
+    margin-top: 10px;
+    flex: 1;
+    min-height: 0;
+    align-content: start;
+    grid-auto-flow: row;
+    overflow: hidden;
+    padding-right: 2px;
+}
+
+.main-scoreboard-staging-country {
+    border: 1px solid #ccd6eb;
+    border-radius: 10px;
+    padding: var(--main-staging-padding-y) var(--main-staging-flag-space) var(--main-staging-padding-y) var(--main-staging-padding-left);
+    height: var(--main-staging-tile-height);
+    background: linear-gradient(140deg, rgba(255, 246, 233, 0.95), rgba(255, 230, 203, 0.92));
+    position: relative;
+    overflow: hidden;
+}
+
+.main-scoreboard-staging-country::before {
+    content: attr(data-flag);
+    position: absolute;
+    right: var(--main-staging-flag-right);
+    top: 50%;
+    transform: translateY(-50%);
+    width: var(--main-staging-flag-size);
+    height: var(--main-staging-flag-size);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--main-staging-flag-font-size);
+    opacity: 0.95;
+    background: rgba(255, 255, 255, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: 50%;
+    overflow: hidden;
+    line-height: 1;
+    pointer-events: none;
+}
+
+.main-scoreboard-staging-order {
+    font-size: var(--main-staging-order-font-size);
+    color: #4b3100;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.main-scoreboard-staging-country-name {
+    font-weight: 600;
+    font-size: var(--main-staging-country-font-size);
+    color: #271300;
+    line-height: 1.15;
+    margin-top: 2px;
+}
+
+.main-scoreboard-staging-singer,
+.main-scoreboard-staging-song {
+    margin-top: 2px;
+    font-size: var(--main-staging-meta-font-size);
+    color: #452100;
+    line-height: 1.15;
+}
+
+.main-scoreboard-staging-country-name,
+.main-scoreboard-staging-singer,
+.main-scoreboard-staging-song {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .score-item {
@@ -865,9 +1222,62 @@ body {
         gap: 5px;
     }
 
-    .eurovision-scoreboard-grid {
-        grid-template-columns: 1fr;
+    .main-scoreboard-layout {
+        grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+        height: calc(100vh - 150px);
     }
+
+    .main-scoreboard-controls {
+        top: 46px;
+        right: 10px;
+        width: calc(100% - 20px);
+    }
+
+    .main-scoreboard-action-buttons {
+        top: 10px;
+        right: 10px;
+    }
+}
+
+#main-screen.scoreboard-main-mode {
+    background: #030711;
+    overflow: hidden;
+}
+
+#main-screen.scoreboard-main-mode .navbar,
+#main-screen.scoreboard-main-mode .tabs {
+    display: none;
+}
+
+#main-screen.scoreboard-main-mode .container {
+    max-width: 100%;
+    padding: 0;
+}
+
+#main-screen.scoreboard-main-mode #scoreboard-main-tab {
+    display: block;
+}
+
+#main-screen.scoreboard-main-mode .scoreboard {
+    height: 100vh;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 10px 12px 12px;
+    background: #070f20;
+}
+
+#main-screen.scoreboard-main-mode .scoreboard h3 {
+    margin-bottom: 8px;
+    color: #f3f7ff;
+    text-align: left;
+    font-size: 1.35rem;
+}
+
+#main-screen.scoreboard-main-mode #main-scoreboard-context {
+    color: #d0e1ff;
+    text-align: left;
+    margin-bottom: 10px;
+    font-size: 1rem;
 }
 
 

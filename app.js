@@ -1,8 +1,8 @@
 // Parse configuration - Users need to update these with their Parse server details
 const PARSE_CONFIG = {
-    appId: "xa3bEo60pNY2AlbGX5BIGmKTMsbnRBjRTOlQlGsS",
-    javascriptKey: "bUZAnINWUmiTW0wljHgH3iiDRSUTljQObGjPTRlV",
-    serverURL: 'https://pg-app-ed22jlv253ocu5itq213e4rcezp1r1.scalabl.cloud/1/' // e.g., 'https://parseapi.back4app.com'
+    appId: "Thumbs",
+    javascriptKey: "4f703905efc4f057a55c698148c4f026",
+    serverURL: 'https://parse-server-msa3.onrender.com/parse/' // e.g., 'https://parseapi.back4app.com'
 };
 
 // Initialize Parse
@@ -10,7 +10,7 @@ Parse.initialize(PARSE_CONFIG.appId, PARSE_CONFIG.javascriptKey);
 Parse.serverURL = PARSE_CONFIG.serverURL;
 console.log('Parse Config:', PARSE_CONFIG);
 
-const APP_VERSION = 'v1.0.15';
+const APP_VERSION = 'v1.1.00';
 const SCOREBOARD_QUERY_LIMIT = 10000;
 const EUROVISION_POINTS_MULTIPLIER = 116;
 const MAIN_SCOREBOARD_ANIMATION_DURATION_MS = 3000;
